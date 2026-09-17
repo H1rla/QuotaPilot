@@ -1,0 +1,23 @@
+{
+  "ordinaryUsageAllowed": true,
+  "rateLimits": {
+    "limitId": "credits-only",
+    "limitName": "Credits Only Bucket",
+    "normalModelSlug": null,
+    "primary": null,
+    "secondary": null,
+    "credits": {
+      "hasCredits": true,
+      "unlimited": false,
+      "balance": "500"
+    },
+    "individualLimit": null,
+    "spendControlReached": false,
+    "planType": "synthetic-plan",
+    "rateLimitReachedType": null
+  },
+  "rateLimitsByLimitId": null,
+  "rateLimitResetCredits": null,
+  "accountId": "acct_redacted_6",
+  "rateLimitUpsell": null
+}

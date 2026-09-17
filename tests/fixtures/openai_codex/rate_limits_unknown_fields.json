@@ -1,0 +1,33 @@
+{
+  "ordinaryUsageAllowed": true,
+  "rateLimits": {
+    "limitId": "future-quota-category-not-yet-seen",
+    "limitName": "Some Future Category",
+    "normalModelSlug": null,
+    "primary": {
+      "usedPercent": 12,
+      "windowDurationMins": 60,
+      "resetsAt": 1790100000,
+      "futureWindowField": "some-new-value-not-yet-modeled"
+    },
+    "secondary": null,
+    "credits": {
+      "hasCredits": true,
+      "unlimited": true,
+      "balance": null,
+      "futureCreditField": 42
+    },
+    "individualLimit": {
+      "futureLimitShape": "unmodeled-nested-object"
+    },
+    "spendControlReached": false,
+    "planType": "some_future_plan_type_not_in_any_enum",
+    "rateLimitReachedType": "some_new_reason_not_previously_documented"
+  },
+  "rateLimitsByLimitId": null,
+  "rateLimitResetCredits": null,
+  "accountId": "acct_redacted_3",
+  "rateLimitUpsell": {
+    "banner": "unmodeled backend banner payload"
+  }
+}

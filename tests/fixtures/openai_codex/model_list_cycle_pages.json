@@ -1,0 +1,16 @@
+[
+  {
+    "cursor_in": null,
+    "cursor_out": "loop-token",
+    "data": [
+      { "id": "gpt-cycle-model-1", "model": "gpt-cycle-model-1", "hidden": false, "isDefault": true }
+    ]
+  },
+  {
+    "cursor_in": "loop-token",
+    "cursor_out": "loop-token",
+    "data": [
+      { "id": "gpt-cycle-model-2", "model": "gpt-cycle-model-2", "hidden": false, "isDefault": false }
+    ]
+  }
+]

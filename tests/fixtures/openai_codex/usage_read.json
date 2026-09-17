@@ -1,0 +1,36 @@
+{
+  "summary": {
+    "lifetimeTokens": 4820000,
+    "peakDailyTokens": 610000,
+    "longestRunningTurnSec": 900,
+    "currentStreakDays": 3,
+    "longestStreakDays": 3
+  },
+  "dailyUsageBuckets": [
+    {
+      "startDate": "2026-01-01",
+      "tokens": 45000
+    },
+    {
+      "startDate": "2026-06-01",
+      "tokens": 12000
+    },
+    {
+      "startDate": "2026-06-02",
+      "tokens": 210000
+    },
+    {
+      "startDate": "2026-06-03",
+      "tokens": 340000
+    },
+    {
+      "startDate": "2026-06-04",
+      "tokens": 88000
+    },
+    {
+      "startDate": "2026-06-05",
+      "tokens": 610000
+    }
+  ],
+  "threadUsage": null
+}

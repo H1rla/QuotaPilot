@@ -1,0 +1,43 @@
+[
+  {
+    "cursor_in": null,
+    "cursor_out": "page-2-token",
+    "catalogVersion": "synthetic-v1",
+    "accountId": "acct_redacted_model_page_1",
+    "paginationHint": { "mode": "cursor", "synthetic": true },
+    "data": [
+      {
+        "id": "gpt-page1-model",
+        "model": "gpt-page1-model",
+        "displayName": "Page 1 Model",
+        "hidden": false,
+        "isDefault": true,
+        "supportedReasoningEfforts": [
+          { "reasoningEffort": "low", "description": "Fast" },
+          { "reasoningEffort": "medium", "description": "Balanced" }
+        ],
+        "defaultReasoningEffort": "medium"
+      }
+    ]
+  },
+  {
+    "cursor_in": "page-2-token",
+    "cursor_out": null,
+    "catalogVersion": "synthetic-v2",
+    "accountId": "acct_redacted_model_page_2",
+    "paginationHint": { "mode": "cursor", "synthetic": true },
+    "data": [
+      {
+        "id": "gpt-page2-model-unseen",
+        "model": "gpt-page2-model-unseen",
+        "displayName": "Page 2 Model (previously unseen)",
+        "hidden": false,
+        "isDefault": false,
+        "supportedReasoningEfforts": [
+          { "reasoningEffort": "ultra_experimental", "description": "Not seen on page 1" }
+        ],
+        "defaultReasoningEffort": "ultra_experimental"
+      }
+    ]
+  }
+]

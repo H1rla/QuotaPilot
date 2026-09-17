@@ -1,0 +1,8 @@
+{
+  "account": {
+    "type": "chatgpt",
+    "email": "redacted-user@example.invalid",
+    "planType": "synthetic-plan"
+  },
+  "requiresOpenaiAuth": true
+}

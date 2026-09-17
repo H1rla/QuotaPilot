@@ -1,0 +1,48 @@
+{
+  "ordinaryUsageAllowed": true,
+  "rateLimits": {
+    "limitId": "codex-gpt-6-astra",
+    "limitName": "GPT-6-Astra",
+    "normalModelSlug": "gpt-6-astra",
+    "primary": {
+      "usedPercent": 20,
+      "windowDurationMins": 300,
+      "resetsAt": 1790100000
+    },
+    "secondary": {
+      "usedPercent": 95,
+      "windowDurationMins": 10080,
+      "resetsAt": 1790400000
+    },
+    "credits": null,
+    "individualLimit": null,
+    "spendControlReached": false,
+    "planType": "pro",
+    "rateLimitReachedType": null
+  },
+  "rateLimitsByLimitId": {
+    "codex-gpt-6-astra": {
+      "limitId": "codex-gpt-6-astra",
+      "limitName": "GPT-6-Astra",
+      "normalModelSlug": "gpt-6-astra",
+      "primary": {
+        "usedPercent": 20,
+        "windowDurationMins": 300,
+        "resetsAt": 1790100000
+      },
+      "secondary": {
+        "usedPercent": 95,
+        "windowDurationMins": 10080,
+        "resetsAt": 1790400000
+      },
+      "credits": null,
+      "individualLimit": null,
+      "spendControlReached": false,
+      "planType": "pro",
+      "rateLimitReachedType": null
+    }
+  },
+  "rateLimitResetCredits": null,
+  "accountId": "acct_redacted_2",
+  "rateLimitUpsell": null
+}

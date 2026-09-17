@@ -1,0 +1,1415 @@
+# QuotaPilot v0.1 Technical Design
+
+- Version: 0.1
+- Status: Implementation-ready draft
+- Primary target: OpenAI Codex CLI
+- Future targets: Claude Code and other quota-based AI coding tools
+- Last design update: 2026-09-18
+
+## 1. Purpose
+
+QuotaPilot is a local usage-management and model-routing assistant for subscription-based AI coding tools.
+
+Its goals are to:
+
+1. Observe current quota / rate-limit state.
+2. Normalize provider-specific usage into a provider-independent representation.
+3. Calculate whether the user is underusing or overusing available quota.
+4. Estimate how much quota may reasonably be used today.
+5. Recommend an appropriate model and reasoning/effort level for a task.
+6. Prefer lighter models when they are sufficient.
+7. Escalate to stronger models when required.
+8. Adapt to subscription-plan and quota-policy changes.
+9. Avoid hardcoding plan behavior wherever live capabilities can be discovered.
+10. Eventually integrate directly into Codex and Claude Code workflows.
+
+QuotaPilot is not merely a usage dashboard.
+
+Core abstraction:
+
+```text
+Recommendation = f(task, quota_state, user_policy)
+```
+
+The user always retains the final decision.
+
+---
+
+## 2. Core design principles
+
+### 2.1 Quota-pool-first, not plan-name-first
+
+Do not make plan names the primary source of truth.
+
+Avoid:
+
+```python
+if plan == "pro":
+    ...
+elif plan == "plus":
+    ...
+```
+
+Prefer:
+
+```text
+Account
+├── capabilities
+├── available models
+├── quota pools
+├── quota bindings
+└── credits / fallback mechanisms
+```
+
+Plan names such as Go / Plus / Pro are metadata and may be used for fallback definitions only.
+
+Priority order for truth:
+
+1. Live provider/account data
+2. Provider model catalog
+3. Provider rate-limit information
+4. Remotely maintained definitions
+5. Bundled fallback definitions
+
+### 2.2 Provider-independent core
+
+The budget engine and routing engine must not know about OpenAI-specific RPC structures.
+
+### 2.3 Recommendation before automation
+
+v0.1 recommends models but does not automatically switch models, spend credits, or launch delegated agents.
+
+### 2.4 Preserve unknown data
+
+Unknown models, quota types, and provider fields must not crash the program. Preserve raw information in metadata and expose uncertainty explicitly.
+
+### 2.5 Explainable decisions
+
+Every routing recommendation must explain:
+
+- why this model,
+- why not a weaker model,
+- why not a stronger model,
+- what would trigger escalation.
+
+---
+
+## 3. v0.1 scope
+
+### MUST implement
+
+- OpenAI Codex provider
+- account information retrieval
+- quota/rate-limit retrieval
+- quota normalization
+- local snapshot persistence
+- weekly pacing
+- daily budget
+- reserve quota
+- underuse detection
+- overuse detection
+- CLI dashboard
+- model recommendation
+- effort/reasoning recommendation
+- escalation recommendation
+- configurable routing policies
+- JSON output
+- Waybar-compatible output
+- unit tests
+- fixture-based provider parser tests
+
+### SHOULD implement
+
+- local Codex usage-history parsing
+- plan/capability fallback definitions
+- unknown-model handling
+- configurable weekday weights
+
+### MUST NOT implement in v0.1
+
+- automatic model switching
+- automatic subagent delegation
+- automatic credit spending
+- account-setting modifications
+- browser UI scraping
+- browser cookie/session extraction
+- credit purchasing
+- assumptions that quota percentages directly equal token percentages
+
+---
+
+## 4. Technology stack
+
+- Python >= 3.12
+- Pydantic v2
+- Typer
+- Rich
+- aiosqlite
+- platformdirs
+- PyYAML
+- pytest
+- pytest-asyncio
+
+Recommended development tooling:
+
+- uv
+- ruff
+- pyright or mypy
+- GitHub Actions
+
+Optional later:
+
+- Textual for a TUI
+
+CLI executable:
+
+```text
+quotapilot
+```
+
+---
+
+## 5. Repository layout
+
+```text
+QuotaPilot/
+├── README.md
+├── CLAUDE.md
+├── AGENTS.md
+├── pyproject.toml
+├── .gitignore
+├── .python-version
+├── docs/
+│   ├── TECHNICAL_DESIGN.md
+│   ├── IMPLEMENTATION_PLAN.md
+│   ├── DECISIONS.md
+│   ├── HANDOFF.md
+│   ├── AGENT_MODEL_POLICY.md
+│   ├── architecture.md
+│   ├── provider-contract.md
+│   ├── quota-model.md
+│   └── routing.md
+├── prompts/
+│   └── CLAUDE_CODE_BOOTSTRAP.md
+├── src/
+│   └── quotapilot/
+│       ├── __init__.py
+│       ├── domain/
+│       │   ├── account.py
+│       │   ├── capability.py
+│       │   ├── model.py
+│       │   ├── quota.py
+│       │   ├── usage.py
+│       │   ├── task.py
+│       │   └── recommendation.py
+│       ├── providers/
+│       │   ├── base.py
+│       │   └── openai_codex/
+│       │       ├── provider.py
+│       │       ├── app_server.py
+│       │       ├── rpc.py
+│       │       ├── parser.py
+│       │       ├── models.py
+│       │       └── fallback.yaml
+│       ├── budget/
+│       │   ├── engine.py
+│       │   ├── pace.py
+│       │   ├── allocation.py
+│       │   └── reserve.py
+│       ├── routing/
+│       │   ├── engine.py
+│       │   ├── complexity.py
+│       │   ├── policy.py
+│       │   ├── scoring.py
+│       │   └── escalation.py
+│       ├── history/
+│       │   ├── repository.py
+│       │   ├── codex_logs.py
+│       │   └── sqlite.py
+│       ├── config/
+│       │   ├── loader.py
+│       │   ├── schema.py
+│       │   └── defaults.yaml
+│       ├── services/
+│       │   ├── snapshot.py
+│       │   ├── status.py
+│       │   └── advisor.py
+│       └── cli/
+│           ├── app.py
+│           ├── status.py
+│           ├── route.py
+│           ├── history.py
+│           ├── doctor.py
+│           └── waybar.py
+└── tests/
+    ├── unit/
+    ├── integration/
+    ├── fixtures/
+    └── golden/
+```
+
+Do not create all implementation files in one commit merely to match this tree. Create directories/files as phases need them.
+
+---
+
+## 6. Domain model
+
+### 6.1 AccountInfo
+
+```python
+class AccountInfo(BaseModel):
+    provider: str
+    account_id: str | None
+    plan_name: str | None
+    capabilities: "CapabilitySet"
+    observed_at: datetime
+```
+
+`plan_name` is informational. Business logic must not depend solely on it.
+
+### 6.2 AIModel
+
+```python
+class AIModel(BaseModel):
+    id: str
+    provider: str
+    family: str | None = None
+
+    selectable: bool = True
+    supported_efforts: list[str] = []
+
+    relative_power: float | None = None
+    relative_cost: float | None = None
+    relative_latency: float | None = None
+
+    metadata: dict[str, Any] = {}
+```
+
+`relative_*` fields are QuotaPilot routing heuristics, not official provider specifications.
+
+### 6.3 CapabilitySet
+
+```python
+class CapabilitySet(BaseModel):
+    models: list[AIModel]
+    supports_reasoning_effort: bool = False
+    supports_credits: bool = False
+    supports_model_selection: bool = False
+    metadata: dict[str, Any] = {}
+```
+
+Unknown models should still be surfaced with `routing_status = unknown` or equivalent metadata.
+
+---
+
+## 7. Quota model
+
+### 7.1 QuotaPool
+
+```python
+class QuotaPool(BaseModel):
+    id: str
+    provider: str
+
+    kind: Literal[
+        "rolling",
+        "fixed",
+        "credit",
+        "unknown",
+    ]
+
+    scope: Literal[
+        "account",
+        "product",
+        "model",
+        "model_group",
+        "unknown",
+    ]
+
+    used_fraction: float | None
+    remaining_fraction: float | None
+
+    starts_at: datetime | None
+    resets_at: datetime | None
+    window_seconds: int | None
+
+    applies_to_models: list[str] = []
+
+    raw_name: str | None = None
+    metadata: dict[str, Any] = {}
+```
+
+All fractions are normalized to 0.0–1.0 when the provider exposes enough information.
+
+### 7.2 QuotaBinding
+
+```python
+class QuotaBinding(BaseModel):
+    model_id: str
+    reasoning_effort: str | None = None
+    quota_pool_ids: list[str]
+
+    confidence: Literal[
+        "provider",
+        "observed",
+        "fallback",
+        "unknown",
+    ]
+```
+
+Bindings are many-to-many. Never assume one model equals one quota.
+
+### 7.3 UsageSnapshot
+
+```python
+class UsageSnapshot(BaseModel):
+    account: AccountInfo
+    quota_pools: list[QuotaPool]
+    quota_bindings: list[QuotaBinding]
+    captured_at: datetime
+```
+
+Snapshots are persisted locally to enable historical analysis.
+
+---
+
+## 8. Provider interface
+
+```python
+class UsageProvider(Protocol):
+    async def capture_usage(self) -> UsageSnapshot: ...
+    async def get_account(self) -> AccountInfo: ...
+    async def get_models(self) -> list[AIModel]: ...
+    async def get_quota_pools(self) -> list[QuotaPool]: ...
+    async def get_quota_bindings(self) -> list[QuotaBinding]: ...
+    async def healthcheck(self) -> ProviderHealth: ...
+```
+
+Provider-specific response structures must not leak into budget/routing layers.
+
+`capture_usage()` is the only coherent-observation API. It returns account,
+quota pools, and bindings from one provider capture with one `captured_at`.
+Persistence and any consumer that needs a mutually consistent observation
+must use it. The individual getters are independent point reads; results from
+sequential getter calls must not be combined and described as atomic.
+
+---
+
+## 9. OpenAI Codex provider
+
+Preferred integration path:
+
+```text
+Codex CLI
+   ↓
+app-server
+   ↓
+account / rate-limit RPC
+   ↓
+OpenAI Codex provider adapter
+   ↓
+QuotaPilot normalized domain
+```
+
+At implementation time, verify the exact current RPC method names and payloads against the installed Codex CLI instead of blindly assuming this document is current.
+
+Expected current candidates include account and rate-limit read operations such as:
+
+```text
+account/read
+account/rateLimits/read
+```
+
+The adapter is responsible for:
+
+1. launching or connecting to `codex app-server`,
+2. handling JSON-RPC framing/lifecycle,
+3. parsing provider responses,
+4. normalizing to domain objects,
+5. preserving unknown raw fields in metadata.
+
+Authentication remains the responsibility of Codex CLI.
+
+QuotaPilot must not store OpenAI credentials.
+
+---
+
+## 10. Provider failure strategy
+
+Fallback sequence:
+
+```text
+live provider
+   ↓ failure
+cached snapshot
+   ↓ unavailable
+fallback capability definitions
+```
+
+The UI must expose the source:
+
+```text
+source = live | cache | fallback
+```
+
+Never present stale data as live.
+
+---
+
+## 11. Persistence
+
+Use SQLite.
+
+Default path should be provided by `platformdirs`, conceptually:
+
+```text
+$XDG_DATA_HOME/quotapilot/quotapilot.db
+```
+
+Core tables:
+
+- accounts
+- quota_snapshots
+- quota_pool_samples
+- model_catalog
+- routing_decisions
+- task_feedback
+
+Minimal starting schema:
+
+```sql
+CREATE TABLE quota_snapshots (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    provider TEXT NOT NULL,
+    account_key TEXT,
+    captured_at TEXT NOT NULL,
+    raw_json TEXT
+);
+```
+
+```sql
+CREATE TABLE quota_pool_samples (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    snapshot_id INTEGER NOT NULL,
+    pool_id TEXT NOT NULL,
+    used_fraction REAL,
+    remaining_fraction REAL,
+    resets_at TEXT,
+    FOREIGN KEY(snapshot_id)
+        REFERENCES quota_snapshots(id)
+);
+```
+
+```sql
+CREATE TABLE routing_decisions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    created_at TEXT NOT NULL,
+    task_summary TEXT,
+    recommended_model TEXT,
+    recommended_effort TEXT,
+    quota_pressure REAL,
+    complexity REAL,
+    explanation TEXT
+);
+```
+
+Do not over-design migrations in Phase 0–2. Introduce a minimal migration mechanism before schema evolution begins.
+
+---
+
+## 12. User configuration
+
+Default location:
+
+```text
+~/.config/quotapilot/config.yaml
+```
+
+Initial schema:
+
+```yaml
+provider:
+  default: openai-codex
+
+budget:
+  reserve_fraction: 0.10
+
+  target:
+    strategy: weighted-linear
+
+  weekday_weights:
+    monday: 1.0
+    tuesday: 1.0
+    wednesday: 1.0
+    thursday: 1.0
+    friday: 1.0
+    saturday: 1.0
+    sunday: 1.0
+
+routing:
+  policy: balanced
+
+  allow:
+    auto_recommendation: true
+
+  escalation:
+    enabled: true
+
+  quota_pressure_weight: 0.35
+
+ui:
+  timezone: local
+```
+
+Configuration precedence:
+
+1. CLI option
+2. environment variable
+3. user config
+4. policy defaults
+5. built-in defaults
+
+---
+
+## 13. Budget concepts
+
+Maintain separate concepts:
+
+- actual usage `U(t)`
+- expected usage `E(t)`
+- reserve `R`
+
+### 13.1 Linear pace
+
+For a quota period starting at `t0` and resetting at `tr`:
+
+```text
+Pt = (t - t0) / (tr - t0)
+```
+
+Clamp to `[0, 1]`.
+
+Expected usable consumption:
+
+```text
+E(t) = Pt * (1 - R)
+```
+
+Example:
+
+```text
+week progress = 50%
+reserve = 10%
+expected usage = 45%
+```
+
+### 13.2 Pace delta
+
+```text
+D = U(t) - E(t)
+```
+
+Interpretation:
+
+- `D < 0`: under expected usage
+- approximately zero: on pace
+- `D > 0`: over expected usage
+
+Default configurable states:
+
+```text
+VERY_UNDER: D < -0.20
+UNDER:      -0.20 <= D < -0.07
+ON_TRACK:   -0.07 <= D <= 0.07
+OVER:        0.07 < D <= 0.20
+CRITICAL:    D > 0.20
+```
+
+### 13.3 Daily budget
+
+Remaining quota:
+
+```text
+Qr = 1 - U(t)
+```
+
+Available after reserve:
+
+```text
+Qa = max(0, Qr - R)
+```
+
+For remaining day weights `wi`:
+
+```text
+Bi = Qa * wi / sum(wj)
+```
+
+Today's suggested quota is `B_today`.
+
+### 13.4 Underuse matters
+
+Example:
+
+```text
+reset in 12 hours
+remaining quota = 40%
+```
+
+should lower quota pressure and permit stronger models more freely.
+
+The objective is not merely conservation. It is useful value maximization over the subscription window.
+
+---
+
+## 14. Multi-window quotas
+
+A model may simultaneously be constrained by multiple pools.
+
+Example:
+
+```text
+5-hour remaining = 80%
+weekly remaining = 5%
+```
+
+The weekly pool is the binding constraint.
+
+Compute pressure for every applicable pool and initially use:
+
+```text
+effective_pressure = max(pool_pressures)
+```
+
+Do not average in v0.1.
+
+Suggested mapping from state to normalized quota pressure:
+
+```text
+VERY_UNDER -> 0.00
+UNDER      -> 0.15
+ON_TRACK   -> 0.35
+OVER       -> 0.70
+CRITICAL   -> 1.00
+```
+
+This mapping is QuotaPilot policy, not provider truth.
+
+---
+
+## 15. Task representation
+
+```python
+class TaskProfile(BaseModel):
+    summary: str
+
+    complexity: float
+    ambiguity: float
+    failure_cost: float
+    verifiability: float
+    expected_context_size: float
+    latency_sensitivity: float
+
+    tags: list[str] = []
+```
+
+All scores use `0.0 ... 1.0`.
+
+v0.1 should support:
+
+1. explicit CLI scores,
+2. deterministic heuristic classification.
+
+Do not require an LLM merely to choose another LLM.
+
+Example:
+
+```bash
+quotapilot route \
+  --complexity 0.7 \
+  --failure-cost 0.8 \
+  --verifiability 0.4
+```
+
+Suggested baseline complexity score:
+
+```text
+C =
+0.30 * intrinsic_complexity
++ 0.20 * ambiguity
++ 0.20 * failure_cost
++ 0.15 * (1 - verifiability)
++ 0.15 * context_size
+```
+
+Clamp to `[0, 1]`.
+
+---
+
+## 16. Routing model
+
+Model utility concept:
+
+```text
+Sm = Qm - λCm - μLm
+```
+
+Where:
+
+- `Qm`: estimated task suitability
+- `Cm`: quota cost
+- `Lm`: latency cost
+- `λ`: quota-pressure coefficient
+- `μ`: latency-sensitivity coefficient
+
+Let:
+
+```text
+λ = λ0 * Pq
+```
+
+Therefore:
+
+- low quota pressure makes stronger models easier to justify,
+- high quota pressure favors lighter models.
+
+Bundled routing policies:
+
+- aggressive
+- balanced (default)
+- conservative
+
+Policy controls:
+
+- quota-pressure weight
+- min/max model tier
+- escalation behavior
+- reserve preference
+
+---
+
+## 17. Escalation
+
+The router supports escalation but does not require always starting weak.
+
+Concept:
+
+```text
+initial recommendation
+      ↓
+attempt
+      ↓
+verification
+      ↓
+failure
+      ↓
+stronger recommendation
+```
+
+The actual ladder must be built from discovered account capabilities.
+
+Never assume every account exposes the same models or effort levels.
+
+Direct strong-model selection is permitted for tasks with:
+
+- high ambiguity,
+- high failure cost,
+- large context/architecture scope,
+- non-local debugging,
+- security-sensitive analysis,
+- repeated prior failure.
+
+---
+
+## 18. Recommendation object
+
+```python
+class ModelStep(BaseModel):
+    model_id: str
+    reasoning_effort: str | None = None
+
+
+class ModelRecommendation(BaseModel):
+    model_id: str
+    reasoning_effort: str | None
+
+    confidence: float
+
+    quota_pressure: float
+    task_complexity: float
+
+    explanation: list[str]
+
+    escalation_path: list[ModelStep]
+    alternatives: list[ModelStep]
+```
+
+Example output:
+
+```text
+Recommended:
+<model> / <effort>
+
+Task complexity:
+0.68
+
+Quota pressure:
+0.63
+
+Why:
+- weekly usage is ahead of target
+- task is moderately complex
+- output is easy to verify
+- escalation is relatively inexpensive
+
+Escalation:
+<stronger model / effort>
+```
+
+---
+
+## 19. CLI
+
+Required commands:
+
+```text
+quotapilot status
+quotapilot route
+quotapilot history
+quotapilot doctor
+quotapilot config
+quotapilot waybar
+```
+
+Every major command must support:
+
+```text
+--json
+```
+
+### 19.1 `quotapilot status`
+
+Example:
+
+```text
+OpenAI Codex
+Plan: <reported plan>
+Source: live
+
+5-hour quota
+Used       41%
+Remaining  59%
+Reset      03:28
+
+Weekly quota
+Used       65%
+Remaining  35%
+Reset      Sep 23 09:59
+
+Expected now
+54%
+
+Pace delta
++11%
+
+State
+OVER
+
+Today's suggested budget
+4.8%
+
+Reserve
+10%
+
+Routing posture
+CONSERVATIVE
+```
+
+### 19.2 `quotapilot route`
+
+```bash
+quotapilot route "Fix typo in README"
+```
+
+Example:
+
+```text
+Task class:
+mechanical
+
+Complexity:
+0.12
+
+Quota pressure:
+0.61
+
+Recommendation:
+<light model> / <moderate effort>
+
+Why:
+- deterministic edit
+- easy verification
+- stronger model provides little expected benefit
+
+Escalate if:
+- requested change affects multiple subsystems
+- first attempt fails
+```
+
+### 19.3 `quotapilot waybar`
+
+JSON output:
+
+```json
+{
+  "text": "QP 35%",
+  "tooltip": "Weekly remaining: 35%\nPace: +11%\nState: OVER",
+  "class": "over"
+}
+```
+
+### 19.4 `quotapilot doctor`
+
+Check:
+
+- Codex executable exists
+- Codex authentication appears available
+- app-server can be started/reached
+- expected account/rate-limit methods can be probed
+- SQLite is writable
+- config is valid
+- clock/timezone handling works
+
+Never print secrets.
+
+---
+
+## 20. Historical usage
+
+When available, parse local Codex logs for:
+
+- usage trend
+- session activity
+- model usage
+- correlation between task class and consumption
+
+Historical logs are supplemental.
+
+Provider quota state remains authoritative for current remaining quota.
+
+---
+
+## 21. Fallback plan/capability definitions
+
+Fallback definitions may include plan-name hints, but must carry provenance:
+
+```yaml
+verified_at: 2026-09-18
+source: <URL or documentation identifier>
+```
+
+They are never authoritative over live discovery.
+
+Do not bake current model catalogs deeply into code.
+
+---
+
+## 22. Security and privacy
+
+QuotaPilot must:
+
+- avoid storing provider access tokens,
+- delegate authentication to official provider tooling,
+- avoid browser-cookie extraction,
+- keep local analysis local by default,
+- redact account identifiers from logs,
+- never execute arbitrary provider-returned shell commands.
+
+Default:
+
+```text
+telemetry = disabled
+```
+
+No task text, repo name, or account metadata leaves the machine unless explicitly enabled by a future feature.
+
+---
+
+## 23. Testing strategy
+
+### Unit tests
+
+Cover:
+
+- quota parsing
+- fraction normalization
+- pace calculations
+- daily allocation
+- reserve behavior
+- multi-quota pressure
+- task scoring
+- model scoring
+- routing
+- escalation
+- config merging
+- unknown-model handling
+- provider failure fallback
+
+### Golden fixtures
+
+Maintain fixtures such as:
+
+```text
+pro-normal.json
+pro-weekly-low.json
+plus-normal.json
+go-normal.json
+unknown-new-model.json
+multiple-model-specific-limits.json
+provider-response-missing-fields.json
+```
+
+Fixture names describe scenarios only. Tests must not require that those plan names always map to fixed limits.
+
+### Integration tests
+
+Live Codex tests may run only when explicitly enabled, for example:
+
+```text
+QUOTAPILOT_INTEGRATION=1
+```
+
+Normal CI must not require an authenticated Codex account.
+
+### Algorithm acceptance examples
+
+Case A:
+
+```text
+week progress = 50%
+usage = 30%
+reserve = 10%
+```
+
+Expected: low pressure / under pace.
+
+Case B:
+
+```text
+week progress = 50%
+usage = 75%
+reserve = 10%
+```
+
+Expected: high pressure / over pace.
+
+Case C:
+
+```text
+weekly remaining = 40%
+reset in 8 hours
+```
+
+Expected: substantial underuse; strong-model penalty reduced.
+
+Case D:
+
+```text
+5h remaining = 80%
+weekly remaining = 5%
+```
+
+Expected: weekly pool dominates effective pressure.
+
+---
+
+## 24. v0.1 acceptance criteria
+
+v0.1 is complete when:
+
+1. `quotapilot status` can retrieve and display a real Codex quota state.
+2. Multiple quota windows are normalized and displayed.
+3. Reset times are rendered in local time.
+4. Snapshots persist in SQLite.
+5. Weekly expected pace is calculated.
+6. Daily suggested usage is calculated.
+7. Reserve quota is respected.
+8. Underuse is detected.
+9. Overuse is detected.
+10. `quotapilot route` gives deterministic recommendations.
+11. Recommendation changes with quota pressure.
+12. Recommendation changes with task complexity.
+13. Unknown models do not crash the program.
+14. Provider failures degrade to cache/fallback clearly.
+15. `--json` works for status and route.
+16. `quotapilot waybar` emits valid JSON.
+17. Core algorithms have unit coverage.
+18. CI works without provider credentials.
+
+---
+
+## 25. Implementation phases
+
+### Phase 0 — repository bootstrap
+
+Create:
+
+- `pyproject.toml`
+- src layout
+- pytest
+- ruff
+- pyright/mypy configuration
+- GitHub Actions
+- basic README
+
+No live provider integration yet.
+
+### Phase 1 — domain layer
+
+Implement:
+
+- AccountInfo
+- AIModel
+- CapabilitySet
+- QuotaPool
+- QuotaBinding
+- UsageSnapshot
+
+Keep domain provider-independent.
+
+### Phase 2 — OpenAI Codex adapter
+
+Implement:
+
+- app-server lifecycle
+- JSON-RPC transport
+- account information retrieval
+- rate-limit retrieval
+- parser/normalizer
+- fixture capture/sanitization
+- parser tests
+
+Do not implement budget/routing yet.
+
+### Phase 3 — snapshot persistence
+
+Implement SQLite repository and snapshot storage.
+
+### Phase 4 — budget engine
+
+Implement:
+
+- window progress
+- expected consumption
+- pace delta
+- budget state
+- reserve
+- daily allocation
+- multi-window pressure
+
+Prefer pure functions.
+
+### Phase 5 — CLI dashboard
+
+Implement:
+
+- status
+- doctor
+- history
+
+### Phase 6 — routing engine
+
+Implement:
+
+- TaskProfile
+- complexity scoring
+- model metadata
+- model utility
+- recommendation
+- escalation ladder
+
+### Phase 7 — CLI advisor
+
+Implement `quotapilot route` and JSON output.
+
+### Phase 8 — desktop integration
+
+Implement `quotapilot waybar`.
+
+### Phase 9 — observation period
+
+Run recommendation-only mode and record:
+
+- recommendation
+- actual model chosen
+- success/failure
+- escalation
+- subjective adequacy
+
+Do not automate model execution yet.
+
+---
+
+## 26. Immediate first vertical slice
+
+Before routing, demonstrate:
+
+```text
+Codex
+ ↓
+rate-limit/account data
+ ↓
+QuotaPool normalization
+ ↓
+basic status rendering
+```
+
+Target demonstration:
+
+```text
+$ quotapilot status
+
+OpenAI Codex
+
+Weekly
+Used       XX%
+Remaining  YY%
+Reset      ...
+
+Source     live
+```
+
+Then add budget math.
+
+---
+
+## 27. Architectural dependency boundary
+
+Allowed direction:
+
+```text
+CLI
+ ↓
+Services
+ ↓
+Budget / Routing
+ ↓
+Domain
+
+Providers
+ ↓
+Domain
+
+Persistence
+ ↓
+Domain
+```
+
+Forbidden examples:
+
+```text
+Domain -> OpenAI
+Budget -> Codex RPC
+Routing -> SQLite
+Provider -> CLI
+```
+
+---
+
+## 28. Agent-development protocol
+
+This repository is intentionally designed for handoff between Claude Code and Codex.
+
+Before making changes, an agent must read in order:
+
+1. `docs/TECHNICAL_DESIGN.md`
+2. `docs/DECISIONS.md`
+3. `docs/HANDOFF.md`
+4. its agent-specific root instruction file (`CLAUDE.md` or `AGENTS.md`)
+
+At the end of each meaningful implementation session:
+
+1. run relevant tests,
+2. update `docs/HANDOFF.md`,
+3. append architectural decisions to `docs/DECISIONS.md` if needed,
+4. list changed files and test results,
+5. leave a concrete next action for the next agent.
+
+`HANDOFF.md` is mutable current state.
+
+`DECISIONS.md` is append-oriented design history.
+
+`TECHNICAL_DESIGN.md` is the canonical product/architecture specification and should only change when the design itself changes.
+
+---
+
+## 29. Engineering philosophy
+
+Prefer:
+
+```text
+boring
+typed
+deterministic
+observable
+testable
+replaceable
+```
+
+over:
+
+```text
+clever
+LLM-dependent
+opaque
+provider-hardcoded
+```
+
+Core quota mathematics must not require an LLM.
+
+---
+
+## 30. Definition of done for an implementation PR
+
+Each implementation PR should include:
+
+- tests,
+- type annotations for changed public code,
+- documentation for changed public behavior,
+- no unrelated refactors,
+- no credentials,
+- fixture coverage for provider parsing,
+- backward-compatible config changes where practical.
+
+If live provider behavior differs from this specification:
+
+1. preserve a sanitized real fixture,
+2. document the discrepancy,
+3. adapt the provider boundary,
+4. do not invent undocumented semantics merely to satisfy the design.
+
+---
+
+## 31. Success criterion
+
+QuotaPilot succeeds when the user no longer has to default to:
+
+> Use the strongest model.
+
+Instead, the decision becomes visible as:
+
+```text
+Task difficulty
+      +
+Current quota
+      +
+Time until reset
+      +
+Reserved capacity
+      +
+Expected value of stronger reasoning
+      ↓
+Recommended model and effort
+```
+
+while preserving human control.
