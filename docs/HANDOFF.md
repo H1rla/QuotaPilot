@@ -86,20 +86,19 @@ require `QUOTAPILOT_INTEGRATION=1`.
   snapshot. This redacted metadata is safe enough for Phase 3 persistence;
   never persist a pre-redaction provider response.
 - The pre-publication local Git history contained an obsolete version of real
-  usage telemetry. It must not be pushed; publication uses a fresh root commit
-  made only from the sanitized working tree.
+  usage telemetry. It was not pushed: publication used a fresh root commit
+  made only from the sanitized working tree, and the isolated obsolete Git
+  object database was removed after the clean commit succeeded.
 
 ## Git publication
 
 - Target branch: `main`
-- Target remote: `git@github.com:H1rla/QuotaPilot.git`
+- Remote: `git@github.com:H1rla/QuotaPilot.git`
 - Remote inspection: empty before initial publication
-- Clean-history initialization: pending final staged review
-- Initial commit: pending
-- Push: pending
-
-This section must be updated with the exact commit hash and push result after
-publication.
+- Clean-history initialization: **complete**; fresh `main` root only
+- Initial commit: `025150f3273b239831ee06a7a051981abb5c7dec`
+- Initial commit message: `feat: establish Codex provider foundation`
+- Initial push: **SUCCESS**; local `main` tracks `origin/main`
 
 ## Known risks / deferred decisions
 
