@@ -7,7 +7,7 @@
 
 - Date: 2026-09-18
 - Last agent: Codex
-- Current phase: **Phase 8 desktop GUI complete; release-candidate verification next**
+- Current phase: **Phase 8.1 localization/provider status/GUI polish complete; release-candidate verification next**
 - Phase 2 provider boundary: **COMPLETE**
 - Phase 3/3.1 persistence boundary: **COMPLETE**
 - Phase 4/4.1 budget boundary: **COMPLETE**
@@ -16,7 +16,8 @@
 - Phase 6 controlled execution boundary: **COMPLETE**
 - Phase 7 productization/release-readiness boundary: **COMPLETE**
 - Phase 8 PySide6/QML GUI boundary: **COMPLETE**
-- Release readiness: **GUI gate passed; final user-approved RC/release gate pending**
+- Phase 8.1 localization/provider-status/polish boundary: **COMPLETE**
+- Release readiness: **Phase 8.1 gate passed; final user-approved RC/release gate pending**
 - Publishing/tag/GitHub release: **NOT PERFORMED**
 
 The implemented Phase 7 contract is
@@ -135,6 +136,41 @@ authority is `docs/UI_DESIGN.md` plus the local `quotapilot-ui` Skill.
 - Full-engine smoke exposed a QML `state` role collision with QQuickItem; roles
   are now named `statusValue`/`statusText`, recorded in `lessons.md`.
 
+## Phase 8.1 implementation
+
+### Localization
+
+- `appearance.language` is a strict `system | en | ja` setting in the normal
+  configuration model. Resolution is explicit preference, then system locale,
+  then English; unknown locales safely fall back to English.
+- QML source strings use English `qsTranslate("Global", ...)` entries. The
+  packaged `gui/i18n/quotapilot_{en,ja}.{ts,qm}` catalogs are loaded with
+  `QTranslator`; Japanese is concise developer-tool language and identifiers,
+  paths, config keys, model/provider IDs, and commands remain canonical.
+- Numeric routing explanations are split into a stable source template plus
+  arguments by the GUI mapper and formatted through `qml/I18n.js`; unknown
+  future core explanations safely fall back to their canonical source text.
+- `TranslationManager` owns the translator and calls
+  `QQmlApplicationEngine.retranslate()` after an atomic Settings save. Language
+  changes therefore apply without restarting; other settings retain the
+  Phase 8 next-launch behavior.
+
+### Provider status and polish
+
+- `OpenAICodexProvider.inspect_status()` performs one privacy-safe
+  `account/read`. Presence of the normalized account object means
+  authenticated; `requiresOpenaiAuth` is a provider requirement, not proof of
+  missing authentication. No account identity, plan label, token, or raw
+  response crosses the provider boundary.
+- `ProviderStatusService` combines inspection with the existing persisted
+  status report. The Overview ViewModel exposes Connected, Unavailable, Not
+  authenticated, Unknown, Fresh/Stale, and persisted-fallback states without
+  collapsing unknown into disconnected.
+- Overview keeps provider status secondary to quota/budget information. The
+  area stacks at compact width; navigation/model/palette hover states,
+  separators, empty/error states, Japanese font fallback, and dynamic UNKNOWN
+  value translation were polished without changing semantic state colors.
+
 ## Verification
 
 Commands run from the repository root:
@@ -158,7 +194,7 @@ QUOTAPILOT_INTEGRATION=1 uv run pytest tests/integration/
 
 Results:
 
-- Offline/default pytest: **431 passed, 5 skipped**. The skips are the five
+- Offline/default pytest: **438 passed, 5 skipped**. The skips are the five
   explicitly gated authenticated tests.
 - Normal authenticated integration: **5 passed**. It captured quota/models and
   exercised persistence/budget/enrichment/routing only; no model execution.
@@ -166,8 +202,13 @@ Results:
 - Pyright: **0 errors, 0 warnings, 0 informations**.
 - Build: **wheel and sdist succeeded**.
 - Clean-wheel and isolated `uv tool` smoke: **PASS**.
-- QML offscreen smoke, installed-wheel GUI smoke, and real Wayland launch:
-  **PASS**. Overview was visually checked at **1100x720** and **900x600**.
+- QML lint/offscreen smoke, 900x600 smoke, installed-wheel GUI smoke, and real
+  Wayland launch: **PASS**. Overview was visually checked at **1100x720** in
+  English and **900x600** in Japanese; no clipping or mixed UNKNOWN status text
+  remained.
+- The final wheel and sdist contain both `.ts` and `.qm` catalogs. A clean
+  external venv loaded Japanese from the installed wheel (`Overview` -> `概要`)
+  and passed GUI smoke without repository-path resource access.
 - Calibration: **10/10 acceptable hits**, zero recorded violations.
 - Real execution integration: **NOT RUN** and not required for Phase 7.
 
@@ -195,12 +236,14 @@ Results:
   `login status` behavior; it discards all command output.
 - Execution audit persistence, background refresh/daemon, TUI, notifications,
   migration version 2, and publishing remain unimplemented by design.
-- GUI settings changes are persisted atomically but intentionally take effect
-  on the next launch; an active service graph is not partially reconfigured.
+- GUI settings changes are persisted atomically. Language is the sole runtime
+  retranslated setting; other changes take effect on the next launch so the
+  active service graph is not partially reconfigured.
 
 ## Next task
 
 Perform final release-candidate verification, including user interaction review
-on the target desktop and observation/calibration of recommendations, without
-widening the Phase 6 authorization boundary. A release tag, GitHub release, or
-package publication requires separate explicit user authorization.
+on the target desktop, a Japanese copy review, and observation/calibration of
+recommendations, without widening the Phase 6 authorization boundary. macOS and
+Windows remain unverified. A release tag, GitHub release, or package publication
+requires separate explicit user authorization.

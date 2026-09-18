@@ -30,8 +30,8 @@ var radius = { structure: 0, control: 4, contained: 6, overlay: 8 }
 var type = { caption: 11, body: 13, label: 14, section: 16, title: 25, metric: 34 }
 var motion = { fast: 120, normal: 160, panel: 180 }
 var font = {
-    mono: "IBM Plex Mono, Berkeley Mono, Noto Sans Mono, DejaVu Sans Mono, monospace",
-    ui: "Inter, Noto Sans, DejaVu Sans, sans-serif"
+    mono: "IBM Plex Mono, Berkeley Mono, Noto Sans Mono CJK JP, Noto Sans Mono, DejaVu Sans Mono, monospace",
+    ui: "Inter, Noto Sans CJK JP, Noto Sans JP, Noto Sans, DejaVu Sans, sans-serif"
 }
 
 function stateColor(state) {

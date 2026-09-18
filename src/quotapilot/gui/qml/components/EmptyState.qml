@@ -3,18 +3,18 @@ import QtQuick.Layouts
 import "../Tokens.js" as Tokens
 
 ColumnLayout {
-    property string title: "Insufficient data"
+    property string title: qsTranslate("Global", "Insufficient data")
     property string detail: ""
     spacing: Tokens.space.sm
     Text {
-        text: parent.title
+        text: qsTranslate("Global", parent.title)
         color: Tokens.color.textPrimary
         font.family: Tokens.font.ui
         font.pixelSize: Tokens.type.section
         font.weight: Font.DemiBold
     }
     Text {
-        text: parent.detail
+        text: qsTranslate("Global", parent.detail)
         color: Tokens.color.textSecondary
         font.family: Tokens.font.ui
         font.pixelSize: Tokens.type.body
@@ -22,4 +22,3 @@ ColumnLayout {
         Layout.maximumWidth: 520
     }
 }
-

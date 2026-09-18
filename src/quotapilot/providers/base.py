@@ -6,6 +6,7 @@ the budget/routing layers — adapters normalize into `quotapilot.domain` types.
 
 from __future__ import annotations
 
+from enum import StrEnum
 from typing import Protocol
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict
@@ -24,6 +25,29 @@ class ProviderHealth(BaseModel):
     provider: str
     ok: bool
     detail: str | None = None
+    checked_at: AwareDatetime
+
+
+class ProviderConnection(StrEnum):
+    CONNECTED = "connected"
+    UNAVAILABLE = "unavailable"
+    UNKNOWN = "unknown"
+
+
+class ProviderAuthentication(StrEnum):
+    AUTHENTICATED = "authenticated"
+    NOT_AUTHENTICATED = "not_authenticated"
+    UNKNOWN = "unknown"
+
+
+class ProviderInspection(BaseModel):
+    """Provider-boundary facts with no account identity or raw payload."""
+
+    model_config = ConfigDict(frozen=True, strict=True, extra="forbid")
+
+    provider: str
+    connection: ProviderConnection
+    authentication: ProviderAuthentication
     checked_at: AwareDatetime
 
 
@@ -51,3 +75,5 @@ class UsageProvider(Protocol):
     async def get_quota_bindings(self) -> list[QuotaBinding]: ...
 
     async def healthcheck(self) -> ProviderHealth: ...
+
+    async def inspect_status(self) -> ProviderInspection: ...

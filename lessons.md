@@ -102,3 +102,12 @@ participate in meta-object construction and are not safe role aliases.
 **Rule going forward**: Name domain status roles explicitly (`statusValue`,
 `statusText`) and run both `qmllint` and full-engine smoke after adding a QML
 delegate or shared component.
+
+## 2026-09-18 — Authentication requirement is not authentication state
+**What happened**: Codex `account/read` can report `requiresOpenaiAuth=true`
+while also returning an authenticated account object.
+**Why**: The flag describes whether that account mode requires OpenAI auth; it
+does not alone mean the current session is logged out.
+**Rule going forward**: Treat a present account object as authenticated. Only
+report Not authenticated when the account is absent and authentication is
+required; otherwise preserve UNKNOWN.

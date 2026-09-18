@@ -23,14 +23,14 @@ Rectangle {
             Layout.fillWidth: true
             spacing: Tokens.space.xs
             Text {
-                text: root.title
+                text: qsTranslate("Global", root.title)
                 color: Tokens.color.textPrimary
                 font.family: Tokens.font.ui
                 font.pixelSize: Tokens.type.body
                 font.weight: Font.DemiBold
             }
             Text {
-                text: root.detail
+                text: qsTranslate("Global", root.detail)
                 visible: text.length > 0
                 color: Tokens.color.textSecondary
                 font.family: Tokens.font.ui
@@ -42,4 +42,3 @@ Rectangle {
         Loader { id: actionLoader }
     }
 }
-

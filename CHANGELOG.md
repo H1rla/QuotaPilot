@@ -20,9 +20,15 @@ Semantic Versioning while pre-1.0 interfaces may still evolve.
   integration, async workers, keyboard navigation, and a command palette.
 - Explicit UNKNOWN/STALE/error presentation, persisted usage visualization,
   model provenance inspection, and safe settings editing.
+- Qt-native System/English/Japanese localization with runtime switching and
+  packaged TS/QM resources.
+- Privacy-safe Codex connection/authentication and persisted-data status in
+  the desktop Overview.
+- Focus, hover, selected-row, Japanese font fallback, and 900x600 responsive
+  polish for the Phase 8 desktop GUI.
 
 ### Security
 
 - Raw account identifiers, tasks, full transcripts, credentials, and provider
-  authentication state are excluded from default persistence and product
-  observability output.
+  payloads are excluded from default persistence and product observability
+  output. The GUI exposes only a normalized authentication availability state.

@@ -985,3 +985,26 @@ not pay a GUI import cost. PySide6 is a runtime dependency, while QML/JS assets
 live inside the Python package and are included by Hatchling's normal package
 data discovery. The command palette contains navigation and safe actions only;
 real execution cannot be triggered directly from it.
+
+---
+
+## 2026-09-18 — Phase 8.1: Qt-native localization and bounded provider status
+
+**Localization**: `appearance.language` is a strict `system | en | ja` central
+config value. English remains the source language. QML uses Qt translation
+calls and packaged TS/QM catalogs; a `QTranslator` is replaced at runtime and
+`QQmlApplicationEngine.retranslate()` updates the live UI. Unknown system
+locales fall back to English. Other policy settings still apply on next launch.
+
+**Provider status**: The provider boundary exposes a typed, identity-free
+inspection derived from the presence of `account/read.account`, using
+`requiresOpenaiAuth` only when the account is absent; it never returns the
+account object, plan, or raw payload. A core service combines connection/auth
+availability with `StatusReport` source/freshness. Overview renders this as a
+secondary compact section. Missing auth gives instructions for the existing
+Codex CLI workflow; QuotaPilot neither stores credentials nor starts login.
+
+**Presentation**: Dynamic provider/status/error strings use one Qt translation
+context, while model IDs, paths, config values, and commands shown as literal
+instructions remain canonical. Japanese-capable font fallbacks and 900x600
+reflow are part of the desktop acceptance surface.

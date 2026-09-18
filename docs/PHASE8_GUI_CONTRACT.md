@@ -364,3 +364,19 @@ Phase 8 is complete when:
 After Phase 8 passes its acceptance gate, QuotaPilot may enter final v0.1.0 release-candidate verification according to `docs/V0_1_RELEASE_BOUNDARY.md`.
 
 Tagging/publishing still requires explicit user approval.
+
+## 25. Phase 8.1 addendum — localization and provider status
+
+The desktop GUI supports the strict central preference
+`appearance.language = system | en | ja`. English is the source language;
+Japanese is supplied by packaged Qt TS/QM resources. System locale resolution
+falls back to English for unknown or unsupported locales. Language changes may
+retranslate the live QML engine, while unrelated settings retain the Phase 8
+next-launch behavior.
+
+Provider status remains a service/ViewModel concern. The GUI may show only
+normalized connection, authentication availability, last refresh, and data
+freshness. It must not display raw account IDs, plan inference, credentials, or
+provider payloads. Missing authentication points to the Codex CLI login and
+Doctor workflows; QuotaPilot never collects credentials or starts login
+without an explicit user action.

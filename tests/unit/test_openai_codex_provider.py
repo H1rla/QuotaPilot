@@ -13,6 +13,7 @@ from pathlib import Path
 
 import pytest
 
+from quotapilot.providers.base import ProviderAuthentication, ProviderConnection
 from quotapilot.providers.openai_codex.errors import (
     CodexNormalizationError,
     CodexRpcError,
@@ -311,6 +312,43 @@ async def test_healthcheck_reports_transport_error_when_executable_missing() -> 
 
     assert health.ok is False
     assert health.detail is not None
+
+
+async def test_status_inspection_distinguishes_authentication_and_unavailable() -> None:
+    authenticated = OpenAICodexProvider(
+        codex_executable=sys.executable,
+        codex_args=(
+            "-c",
+            _FAKE_APP_SERVER_SCRIPT,
+            str(FIXTURES / "account_read_apikey.json"),
+            str(FIXTURES / "rate_limits_single_window.json"),
+            str(FIXTURES / "model_list.json"),
+        ),
+    )
+
+    connected = await authenticated.inspect_status()
+    not_authenticated_provider = OpenAICodexProvider(
+        codex_executable=sys.executable,
+        codex_args=(
+            "-c",
+            _FAKE_APP_SERVER_SCRIPT,
+            str(FIXTURES / "account_read_null_account.json"),
+            str(FIXTURES / "rate_limits_single_window.json"),
+            str(FIXTURES / "model_list.json"),
+        ),
+    )
+    authenticated_chatgpt = await _fake_provider().inspect_status()
+    not_authenticated = await not_authenticated_provider.inspect_status()
+    unavailable = await OpenAICodexProvider(
+        codex_executable="quotapilot-nonexistent-binary-xyz"
+    ).inspect_status()
+
+    assert connected.connection is ProviderConnection.CONNECTED
+    assert connected.authentication is ProviderAuthentication.AUTHENTICATED
+    assert authenticated_chatgpt.authentication is ProviderAuthentication.AUTHENTICATED
+    assert not_authenticated.authentication is ProviderAuthentication.NOT_AUTHENTICATED
+    assert unavailable.connection is ProviderConnection.UNAVAILABLE
+    assert unavailable.authentication is ProviderAuthentication.UNKNOWN
 
 
 async def test_get_account_raises_transport_error_when_executable_missing() -> None:

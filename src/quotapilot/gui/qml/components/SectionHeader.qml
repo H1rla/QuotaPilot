@@ -7,4 +7,3 @@ Text {
     font.pixelSize: Tokens.type.section
     font.weight: Font.DemiBold
 }
-

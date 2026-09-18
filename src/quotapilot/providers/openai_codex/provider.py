@@ -36,7 +36,12 @@ from quotapilot.domain.account import AccountInfo
 from quotapilot.domain.model import AIModel
 from quotapilot.domain.quota import QuotaBinding, QuotaPool
 from quotapilot.domain.usage import UsageSnapshot
-from quotapilot.providers.base import ProviderHealth
+from quotapilot.providers.base import (
+    ProviderAuthentication,
+    ProviderConnection,
+    ProviderHealth,
+    ProviderInspection,
+)
 
 from .app_server import AppServerNotRunningError, AppServerProcess
 from .errors import CodexNormalizationError, CodexRpcError, CodexTransportError
@@ -272,4 +277,32 @@ class OpenAICodexProvider:
             ok=True,
             detail=None,
             checked_at=datetime.now(UTC),
+        )
+
+    async def inspect_status(self) -> ProviderInspection:
+        """Inspect Codex connectivity/auth without exposing account metadata."""
+        checked_at = datetime.now(UTC)
+        try:
+            async with self._session() as client:
+                account = await self._fetch_account_response(client)
+        except (CodexTransportError, CodexRpcError, CodexNormalizationError):
+            return ProviderInspection(
+                provider=PROVIDER_ID,
+                connection=ProviderConnection.UNAVAILABLE,
+                authentication=ProviderAuthentication.UNKNOWN,
+                checked_at=checked_at,
+            )
+        if account.account is not None:
+            authentication = ProviderAuthentication.AUTHENTICATED
+        elif account.requires_openai_auth:
+            authentication = ProviderAuthentication.NOT_AUTHENTICATED
+        else:
+            # No account and no login requirement is not enough evidence to
+            # claim either an authenticated or unauthenticated account.
+            authentication = ProviderAuthentication.UNKNOWN
+        return ProviderInspection(
+            provider=PROVIDER_ID,
+            connection=ProviderConnection.CONNECTED,
+            authentication=authentication,
+            checked_at=checked_at,
         )

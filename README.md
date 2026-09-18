@@ -33,6 +33,8 @@ calibrated.
 - Privacy-safe `status`, `models`, `doctor`, and Waybar JSON surfaces.
 - Dark, keyboard-first desktop GUI with Overview, Usage, Models, Route,
   Execute, History, Settings, and a `Ctrl+P` command palette.
+- Runtime-switchable System/English/Japanese GUI localization and compact,
+  privacy-safe Codex connection/authentication status.
 
 ## Safety and privacy
 
@@ -162,6 +164,10 @@ execution:
 profiles:
   # Omit to use profiles bundled in the installed package.
   directory: /home/me/.config/quotapilot/model_profiles
+
+appearance:
+  # system resolves Japanese locales to ja; unsupported locales use English.
+  language: system  # system | en | ja
 ```
 
 Precedence is:

@@ -3,8 +3,9 @@ import "../Tokens.js" as Tokens
 
 Text {
     property string statusText: "UNKNOWN"
-    text: statusText
-    color: Tokens.stateColor(statusText)
+    property string statusValue: statusText
+    text: qsTranslate("Global", statusText)
+    color: Tokens.stateColor(statusValue)
     font.family: Tokens.font.mono
     font.pixelSize: Tokens.type.body
     font.weight: Font.DemiBold

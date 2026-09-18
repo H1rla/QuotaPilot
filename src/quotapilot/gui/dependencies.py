@@ -17,6 +17,7 @@ from quotapilot.providers.openai_codex.provider import OpenAICodexProvider
 from quotapilot.routing.engine import RoutingEngine
 from quotapilot.routing.profiler import TaskProfiler
 from quotapilot.services.execution import ExecutionService
+from quotapilot.services.provider_status import ProviderStatusService
 from quotapilot.services.routing import RoutingService
 from quotapilot.services.status import StatusService
 
@@ -29,6 +30,7 @@ class GuiDependencies:
     enricher: CapabilityEnricher
     registry: ModelProfileRegistry
     provider: OpenAICodexProvider
+    provider_status_service: ProviderStatusService
     status_service: StatusService
     routing_service: RoutingService
     execution_service: ExecutionService
@@ -71,8 +73,8 @@ def build_dependencies(effective: EffectiveConfig) -> GuiDependencies:
         enricher=enricher,
         registry=registry,
         provider=provider,
+        provider_status_service=ProviderStatusService(),
         status_service=status,
         routing_service=routing,
         execution_service=execution,
     )
-

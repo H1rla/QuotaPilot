@@ -1585,3 +1585,18 @@ Recommended model and effort
 ```
 
 while preserving human control.
+
+---
+
+## 32. Phase 8.1 desktop localization and provider status
+
+The GUI uses Qt translation infrastructure (`qsTranslate`, `QTranslator`, and
+packaged TS/QM catalogs). `appearance.language` is strict central configuration
+with `system`, `en`, and `ja`; unsupported system locales fall back to English.
+Only the language preference is applied live through QML retranslation.
+
+Provider connection inspection is a provider-boundary operation returning a
+small provider-neutral typed result. A service combines it with the existing
+privacy-safe status report for GUI display. It exposes no account identity,
+plan inference, credentials, or raw response data and runs on the existing GUI
+worker boundary.

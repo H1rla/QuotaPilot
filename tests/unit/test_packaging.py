@@ -57,3 +57,13 @@ def test_gui_runtime_dependency_and_qml_assets_are_present() -> None:
         "History.qml",
         "Settings.qml",
     } <= {path.name for path in qml.glob("*.qml")}
+    i18n = ROOT / "src" / "quotapilot" / "gui" / "i18n"
+    assert {
+        "quotapilot_en.ts",
+        "quotapilot_en.qm",
+        "quotapilot_ja.ts",
+        "quotapilot_ja.qm",
+    } <= {path.name for path in i18n.iterdir()}
+    assert "<translation>概要</translation>" in (i18n / "quotapilot_ja.ts").read_text(
+        encoding="utf-8"
+    )

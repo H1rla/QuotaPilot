@@ -21,7 +21,7 @@ Item {
             TextField {
                 id: query
                 Layout.fillWidth: true; Layout.preferredHeight: 48
-                placeholderText: "Type a command"
+                placeholderText: qsTranslate("Global", "Type a command")
                 color: Tokens.color.textPrimary; placeholderTextColor: Tokens.color.textMuted
                 font.family: Tokens.font.mono; font.pixelSize: Tokens.type.body
                 leftPadding: Tokens.space.lg; rightPadding: Tokens.space.lg
@@ -43,12 +43,14 @@ Item {
                     required property string title
                     required property string hint
                     width: ListView.view.width; height: 42
-                    color: index === commandPalette.selectedIndex ? Tokens.color.accentSubtle : "transparent"
+                    color: index === commandPalette.selectedIndex || commandHover.hovered
+                           ? Tokens.color.accentSubtle : "transparent"
                     RowLayout {
                         anchors.fill: parent; anchors.leftMargin: Tokens.space.lg; anchors.rightMargin: Tokens.space.lg
                         Text { text: title; color: index === commandPalette.selectedIndex ? Tokens.color.accent : Tokens.color.textPrimary; font.family: Tokens.font.ui; font.pixelSize: Tokens.type.body; Layout.fillWidth: true }
                         Text { text: hint; color: Tokens.color.textMuted; font.family: Tokens.font.mono; font.pixelSize: Tokens.type.caption }
                     }
+                    HoverHandler { id: commandHover }
                     TapHandler { onTapped: commandPalette.activate(index) }
                 }
             }
@@ -56,4 +58,3 @@ Item {
     }
     onVisibleChanged: if (visible) { query.text = ""; query.forceActiveFocus() }
 }
-

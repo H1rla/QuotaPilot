@@ -14,6 +14,7 @@ from typing import Any, cast
 
 import pytest
 from pydantic import ValidationError
+from PySide6.QtCore import QCoreApplication
 
 from quotapilot.budget.models import BudgetState
 from quotapilot.capabilities.models import (
@@ -22,17 +23,25 @@ from quotapilot.capabilities.models import (
     ProvenanceConfidence,
     ProvenanceSource,
 )
-from quotapilot.config import AppConfig, load_effective_config, save_user_config
+from quotapilot.config import (
+    AppConfig,
+    LanguagePreference,
+    load_effective_config,
+    save_user_config,
+)
 from quotapilot.execution.models import ExecutionPlan
 from quotapilot.gui.commands import filter_commands
 from quotapilot.gui.controllers.app_controller import AppController
 from quotapilot.gui.dependencies import build_dependencies
+from quotapilot.gui.localization import TranslationManager, resolve_language
 from quotapilot.gui.mappers import (
     map_execution_plan,
     map_models,
     map_overview,
+    map_provider_status,
     map_route,
 )
+from quotapilot.gui.viewmodels.command_palette import CommandPaletteViewModel
 from quotapilot.gui.viewmodels.overview import OverviewViewModel
 from quotapilot.gui.viewmodels.route import RouteViewModel
 from quotapilot.gui.viewmodels.settings import validate_settings_update
@@ -42,6 +51,7 @@ from quotapilot.observability.models import (
     StatusPool,
     StatusReport,
 )
+from quotapilot.providers.base import ProviderAuthentication, ProviderConnection
 from quotapilot.routing.models import (
     CandidateScore,
     ProfileSource,
@@ -52,6 +62,7 @@ from quotapilot.routing.models import (
     TaskClass,
     TaskProfile,
 )
+from quotapilot.services.provider_status import ProviderStatus
 
 NOW = datetime(2026, 9, 18, 12, tzinfo=UTC)
 
@@ -203,6 +214,94 @@ def test_overview_mapping_preserves_unknown_stale_and_provider_fallback() -> Non
     assert stale["freshness"] == "Snapshot 18m ago · STALE"
 
 
+def test_language_resolution_and_runtime_translation() -> None:
+    assert resolve_language(LanguagePreference.SYSTEM, "ja_JP.UTF-8") == "ja"
+    assert resolve_language(LanguagePreference.SYSTEM, "en_US.UTF-8") == "en"
+    assert resolve_language(LanguagePreference.SYSTEM, "zz_ZZ") == "en"
+    assert resolve_language(LanguagePreference.JAPANESE, "en_US") == "ja"
+    assert resolve_language(LanguagePreference.ENGLISH, "ja_JP") == "en"
+    assert resolve_language("invalid", "ja_JP") == "en"
+
+    application = QCoreApplication.instance() or QCoreApplication([])
+    manager = TranslationManager(LanguagePreference.JAPANESE)
+    engine = SimpleNamespace(retranslate_calls=0)
+
+    def retranslate() -> None:
+        engine.retranslate_calls += 1
+
+    engine.retranslate = retranslate
+    manager.attach_engine(cast(Any, engine))
+    manager.install_initial()
+    assert manager.currentLanguage == "ja"
+    assert QCoreApplication.translate("Global", "Overview") == "概要"
+    assert QCoreApplication.translate(
+        "Global", "Task difficulty is %1; required model power is %2."
+    ) == "タスク難易度は %1、必要なモデル性能は %2 です。"
+    assert manager.set_preference(LanguagePreference.ENGLISH) is True
+    assert engine.retranslate_calls == 1
+    assert QCoreApplication.translate("Global", "Overview") == "Overview"
+    assert application is not None
+
+
+def test_command_palette_uses_runtime_translation_for_display_and_search() -> None:
+    application = QCoreApplication.instance() or QCoreApplication([])
+    manager = TranslationManager(LanguagePreference.JAPANESE)
+    manager.install_initial()
+    palette = CommandPaletteViewModel()
+
+    assert palette.model.get(0)["title"] == "概要を開く"
+    palette.setQuery("概要")
+    assert palette.model.get(0)["commandId"] == "overview"
+
+    manager.set_preference(LanguagePreference.ENGLISH)
+    assert application is not None
+
+
+def test_provider_status_mapping_covers_connection_fallback_stale_and_privacy() -> None:
+    connected = map_provider_status(
+        ProviderStatus(
+            provider="openai-codex",
+            connection=ProviderConnection.CONNECTED,
+            authentication=ProviderAuthentication.AUTHENTICATED,
+            checked_at=NOW,
+            last_refresh_at=NOW,
+        )
+    )
+    unavailable = map_provider_status(
+        ProviderStatus(
+            provider="openai-codex",
+            connection=ProviderConnection.UNAVAILABLE,
+            authentication=ProviderAuthentication.UNKNOWN,
+            checked_at=NOW,
+            last_refresh_at=NOW - timedelta(minutes=18),
+            using_persisted_data=True,
+            stale=True,
+        )
+    )
+    not_authenticated = map_provider_status(
+        ProviderStatus(
+            provider="openai-codex",
+            connection=ProviderConnection.CONNECTED,
+            authentication=ProviderAuthentication.NOT_AUTHENTICATED,
+            checked_at=NOW,
+        )
+    )
+    unknown = map_provider_status(None)
+    serialized = json.dumps(
+        [connected, unavailable, not_authenticated, unknown], ensure_ascii=False
+    )
+
+    assert connected["status"] == "Connected"
+    assert connected["data"] == "Fresh"
+    assert unavailable["status"] == "Unavailable"
+    assert unavailable["data"] == "Using persisted data · STALE"
+    assert not_authenticated["status"] == "Not authenticated"
+    assert unknown["status"] == "Unknown"
+    assert "account_id" not in serialized
+    assert "plan" not in serialized.lower()
+    assert "raw_observation" not in serialized
+
+
 def test_models_route_and_execution_mappings_are_ui_ready_and_private(
     tmp_path: Path,
 ) -> None:
@@ -236,6 +335,24 @@ def test_models_route_and_execution_mappings_are_ui_ready_and_private(
     assert model_rows[0]["evidence"] == ["Reviewed local capability profile"]
     assert route["model"] == "gpt-5.6-terra"
     assert route["escalation"][0]["model"] == "gpt-5.6-sol"
+    assert route["explanation"] == [
+        {"source": "Sufficient capability with lower quota cost.", "args": []}
+    ]
+    templated = map_route(
+        _recommendation().model_copy(
+            update={
+                "explanation": (
+                    "Task difficulty is 0.680; required model power is 0.720.",
+                )
+            }
+        )
+    )
+    assert templated["explanation"] == [
+        {
+            "source": "Task difficulty is %1; required model power is %2.",
+            "args": ["0.680", "0.720"],
+        }
+    ]
     assert dry_run["dryRun"] is True
     assert dry_run["approval"] == "Not required"
     assert approval["requiresConfirmation"] is True
@@ -265,7 +382,12 @@ def test_command_palette_actions_navigate_and_toggle_details(tmp_path: Path) -> 
         environ={},
         cli_overrides={"database.path": str(tmp_path / "gui.db")},
     )
-    controller = AppController(build_dependencies(effective), smoke_mode=True)
+    translations = TranslationManager(LanguagePreference.ENGLISH)
+    controller = AppController(
+        build_dependencies(effective),
+        translations,
+        smoke_mode=True,
+    )
 
     controller.triggerCommand("settings")
     assert controller.pageName == "Settings"
@@ -312,6 +434,43 @@ def test_overview_provider_unavailable_and_route_without_snapshot_are_actionable
     assert route.errorAction == "Refresh"
 
 
+def test_overview_viewmodel_maps_provider_status() -> None:
+    report = _status(stale=True)
+    provider_status = ProviderStatus(
+        provider="openai-codex",
+        connection=ProviderConnection.CONNECTED,
+        authentication=ProviderAuthentication.AUTHENTICATED,
+        checked_at=NOW,
+        last_refresh_at=report.captured_at,
+        using_persisted_data=True,
+        stale=True,
+    )
+
+    class StatusService:
+        async def get_status(self, **_kwargs: Any) -> StatusReport:
+            return report
+
+    class ProviderStatusService:
+        async def get_status(self, *_args: Any) -> ProviderStatus:
+            return provider_status
+
+    dependencies = SimpleNamespace(
+        status_service=StatusService(),
+        provider_status_service=ProviderStatusService(),
+        provider=object(),
+        effective=SimpleNamespace(
+            config=SimpleNamespace(provider=SimpleNamespace(default="openai-codex"))
+        ),
+    )
+    overview = OverviewViewModel(cast(Any, dependencies), cast(Any, _ImmediateRunner()))
+
+    overview.load()
+
+    mapped = cast(dict[str, Any], overview.providerStatus)
+    assert mapped["status"] == "Connected"
+    assert mapped["data"] == "Using persisted data · STALE"
+
+
 def test_settings_validation_and_atomic_round_trip(tmp_path: Path) -> None:
     updated = validate_settings_update(
         AppConfig(),
@@ -323,12 +482,14 @@ def test_settings_validation_and_atomic_round_trip(tmp_path: Path) -> None:
         timeout_seconds="600",
         max_attempts="4",
         max_same_step_retries="1",
+        language="ja",
     )
     path = save_user_config(updated, path=tmp_path / "config.yaml")
     loaded = load_effective_config(path=path, environ={})
 
     assert loaded.config == updated
     assert loaded.config.budget.timezone == "Asia/Tokyo"
+    assert loaded.config.appearance.language is LanguagePreference.JAPANESE
     assert not list(tmp_path.glob("*.tmp"))
 
     with pytest.raises((ValueError, ValidationError)):
@@ -370,3 +531,31 @@ def test_qml_offscreen_smoke_uses_no_provider_credentials(tmp_path: Path) -> Non
 
     assert result.returncode == 0, result.stderr
     assert "must-not-be-used-by-smoke" not in result.stdout + result.stderr
+
+
+def test_qml_offscreen_smoke_at_minimum_size(tmp_path: Path) -> None:
+    environment = dict(os.environ)
+    environment.update(
+        {
+            "XDG_CONFIG_HOME": str(tmp_path / "config"),
+            "XDG_DATA_HOME": str(tmp_path / "data"),
+        }
+    )
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            (
+                "from quotapilot.gui.app import run_gui; "
+                "raise SystemExit(run_gui(smoke_test=True, smoke_size=(900, 600)))"
+            ),
+        ],
+        cwd=Path(__file__).parents[2],
+        env=environment,
+        capture_output=True,
+        text=True,
+        timeout=20,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr

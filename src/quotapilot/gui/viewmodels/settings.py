@@ -7,7 +7,7 @@ from typing import Any
 from pydantic import ValidationError
 from PySide6.QtCore import Property, Signal, Slot
 
-from quotapilot.config import AppConfig, save_user_config
+from quotapilot.config import AppConfig, LanguagePreference, save_user_config
 from quotapilot.execution.models import ExecutionMode
 
 from ..async_runner import AsyncRunner
@@ -26,6 +26,7 @@ def validate_settings_update(
     timeout_seconds: str,
     max_attempts: str,
     max_same_step_retries: str,
+    language: str | None = None,
 ) -> AppConfig:
     """Parse human form values once, then run authoritative strict models."""
     raw = config.model_dump(mode="python")
@@ -37,11 +38,15 @@ def validate_settings_update(
     raw["execution"]["timeout_seconds"] = int(timeout_seconds)
     raw["execution"]["max_attempts"] = int(max_attempts)
     raw["execution"]["max_same_step_retries"] = int(max_same_step_retries)
+    raw["appearance"]["language"] = (
+        LanguagePreference(language) if language is not None else config.appearance.language
+    )
     return AppConfig.model_validate(raw)
 
 
 class SettingsViewModel(BaseViewModel):
     settingsChanged = Signal()
+    languageSaved = Signal(str)
 
     def __init__(self, dependencies: GuiDependencies, runner: AsyncRunner) -> None:
         super().__init__()
@@ -66,13 +71,14 @@ class SettingsViewModel(BaseViewModel):
             "maxAttempts": str(config.execution.max_attempts),
             "maxSameStepRetries": str(config.execution.max_same_step_retries),
             "configPath": str(self._dependencies.effective.path),
+            "language": config.appearance.language.value,
         }
 
     @Property(str, notify=settingsChanged)
     def savedMessage(self) -> str:  # noqa: N802
         return self._saved_message
 
-    @Slot(str, str, str, str, str, str, str, str)
+    @Slot(str, str, str, str, str, str, str, str, str)
     def save(  # noqa: PLR0913 - mirrors the visible settings form
         self,
         reserve_fraction: str,
@@ -83,6 +89,7 @@ class SettingsViewModel(BaseViewModel):
         timeout_seconds: str,
         max_attempts: str,
         max_same_step_retries: str,
+        language: str,
     ) -> None:
         if self.busy:
             return
@@ -97,6 +104,7 @@ class SettingsViewModel(BaseViewModel):
                 timeout_seconds=timeout_seconds,
                 max_attempts=max_attempts,
                 max_same_step_retries=max_same_step_retries,
+                language=language,
             )
         except (ValueError, ValidationError) as exc:
             if isinstance(exc, ValidationError):
@@ -116,9 +124,12 @@ class SettingsViewModel(BaseViewModel):
             return candidate
 
         def success(value: object) -> None:
+            previous_language = self._config.appearance.language
             if isinstance(value, AppConfig):
                 self._config = value
-            self._saved_message = "Saved · changes apply on next launch"
+            if self._config.appearance.language is not previous_language:
+                self.languageSaved.emit(self._config.appearance.language.value)
+            self._saved_message = "Saved · language applied now; other changes apply on next launch"
             self._finish()
             self.settingsChanged.emit()
 

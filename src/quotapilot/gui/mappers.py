@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import Iterable
 from datetime import datetime
 from typing import Any
@@ -10,9 +11,63 @@ from quotapilot.budget.models import BudgetReport, PoolBudgetAssessment
 from quotapilot.capabilities.models import ModelCapabilityView
 from quotapilot.execution.models import ExecutionPlan, ExecutionResult
 from quotapilot.observability.models import StatusPool, StatusReport
+from quotapilot.providers.base import ProviderAuthentication, ProviderConnection
 from quotapilot.routing.models import RoutingRecommendation
+from quotapilot.services.provider_status import ProviderStatus
 
 from .formatting import age, decimal, duration, fraction, timestamp
+
+_EXPLANATION_PATTERNS = (
+    (
+        re.compile(r"^Task difficulty is (.+); required model power is (.+)\.$"),
+        "Task difficulty is %1; required model power is %2.",
+    ),
+    (
+        re.compile(
+            r"^Risk inputs are failure_cost=(.+), ambiguity=(.+), and verifiability=(.+)\.$"
+        ),
+        "Risk inputs are failure_cost=%1, ambiguity=%2, and verifiability=%3.",
+    ),
+    (
+        re.compile(r"^Quota pressure (.+) \((.+)\) contributed a (.+) cost penalty\.$"),
+        "Quota pressure %1 (%2) contributed a %3 cost penalty.",
+    ),
+    (
+        re.compile(
+            r"^(.+) meets the capability floor (.+) and has the highest policy utility\.$"
+        ),
+        "%1 meets the capability floor %2 and has the highest policy utility.",
+    ),
+    (
+        re.compile(
+            r"^Effort (.+) was selected after a quota-saving reduction allowed by "
+            r"low task risk and high verifiability\.$"
+        ),
+        "Effort %1 was selected after a quota-saving reduction allowed by "
+        "low task risk and high verifiability.",
+    ),
+    (
+        re.compile(
+            r"^Effort (.+) was selected from the model's explicit ordered effort catalog\.$"
+        ),
+        "Effort %1 was selected from the model's explicit ordered effort catalog.",
+    ),
+    (
+        re.compile(
+            r"^The advisory escalation path contains (.+) step\(s\) and performs no execution\.$"
+        ),
+        "The advisory escalation path contains %1 step(s) and performs no execution.",
+    ),
+)
+
+
+def _map_explanation(source: str) -> dict[str, Any]:
+    """Separate stable routing templates from values for Qt translation."""
+    for pattern, template in _EXPLANATION_PATTERNS:
+        match = pattern.fullmatch(source)
+        if match is not None:
+            return {"source": template, "args": list(match.groups())}
+    return {"source": source, "args": []}
 
 
 def _binding_pool(report: StatusReport) -> StatusPool | None:
@@ -34,6 +89,7 @@ def map_overview(report: StatusReport | None) -> dict[str, Any]:
             "routableModels": "Unknown",
             "profileFreshness": "Unknown",
             "freshness": "No persisted snapshot",
+            "freshnessAge": "Unknown",
             "stale": False,
             "provider": "Unavailable",
             "errorAction": "Refresh",
@@ -64,10 +120,61 @@ def map_overview(report: StatusReport | None) -> dict[str, Any]:
         ),
         "profileFreshness": report.profile.freshness.value.upper(),
         "freshness": freshness,
+        "freshnessAge": age(report.snapshot_age_seconds),
         "stale": report.is_stale,
         "provider": report.provider,
         "source": report.source.value,
         "warnings": list(report.warnings),
+    }
+
+
+def map_provider_status(status: ProviderStatus | None) -> dict[str, Any]:
+    """Map typed provider facts without account IDs, plan inference, or raw detail."""
+    if status is None:
+        return {
+            "provider": "OpenAI Codex",
+            "status": "Unknown",
+            "statusValue": "UNKNOWN",
+            "authentication": "Unknown",
+            "lastRefresh": "Unknown",
+            "data": "Unknown",
+            "guidance": "Provider status has not been checked.",
+        }
+    if status.authentication is ProviderAuthentication.NOT_AUTHENTICATED:
+        label = "Not authenticated"
+        status_value = "UNKNOWN"
+        guidance = "Codex CLI authentication is required. Run `codex login`, then refresh."
+    elif status.connection is ProviderConnection.UNAVAILABLE:
+        label = "Unavailable"
+        status_value = "ERROR"
+        guidance = "Run `quotapilot doctor` to inspect Codex CLI availability."
+    elif status.connection is ProviderConnection.CONNECTED:
+        label = "Connected"
+        status_value = "SUCCESS"
+        guidance = "Authentication is managed by Codex CLI."
+    else:
+        label = "Unknown"
+        status_value = "UNKNOWN"
+        guidance = "Provider status could not be determined."
+    if status.using_persisted_data:
+        data = "Using persisted data · STALE" if status.stale else "Using persisted data"
+    elif status.last_refresh_at is not None:
+        data = "Stale" if status.stale else "Fresh"
+    else:
+        data = "Unknown"
+    return {
+        "provider": "OpenAI Codex",
+        "status": label,
+        "statusValue": status_value,
+        "authentication": (
+            "Codex CLI"
+            if status.authentication is ProviderAuthentication.AUTHENTICATED
+            else label if status.authentication is ProviderAuthentication.NOT_AUTHENTICATED
+            else "Unknown"
+        ),
+        "lastRefresh": timestamp(status.last_refresh_at),
+        "data": data,
+        "guidance": guidance,
     }
 
 
@@ -155,7 +262,7 @@ def map_route(recommendation: RoutingRecommendation) -> dict[str, Any]:
             "contextDemand": profile.context_demand,
             "latencySensitivity": profile.latency_sensitivity,
         },
-        "explanation": list(recommendation.explanation),
+        "explanation": [_map_explanation(item) for item in recommendation.explanation],
         "escalation": [
             {
                 "model": step.model_id,

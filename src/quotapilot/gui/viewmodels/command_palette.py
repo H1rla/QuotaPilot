@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from PySide6.QtCore import Property, QObject, Signal, Slot
+from PySide6.QtCore import Property, QCoreApplication, QObject, Signal, Slot
 
 from ..commands import PaletteCommand, filter_commands
 from ..list_model import DictListModel
@@ -86,12 +86,20 @@ class CommandPaletteViewModel(QObject):
         self.activateSelected()
 
     def _refilter(self) -> None:
-        self._commands = filter_commands(self._query)
+        def translate(text: str) -> str:
+            return QCoreApplication.translate("Global", text)
+
+        self._commands = filter_commands(self._query, translate)
         self.model.replace(
             {
                 "commandId": command.id,
-                "title": command.title,
-                "hint": command.hint,
+                "title": translate(command.title),
+                "hint": translate(command.hint),
             }
             for command in self._commands
         )
+
+    @Slot()
+    def retranslate(self) -> None:
+        self._refilter()
+        self.stateChanged.emit()

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 
 
@@ -33,16 +34,26 @@ COMMANDS: tuple[PaletteCommand, ...] = (
 )
 
 
-def filter_commands(query: str) -> tuple[PaletteCommand, ...]:
+def filter_commands(
+    query: str,
+    translate: Callable[[str], str] | None = None,
+) -> tuple[PaletteCommand, ...]:
+    localize = translate or (lambda value: value)
     normalized = " ".join(query.lower().split())
     if not normalized:
         return COMMANDS
 
     def score(command: PaletteCommand) -> tuple[int, int, str] | None:
-        haystack = " ".join((command.title, command.hint, *command.keywords)).lower()
+        haystack = " ".join(
+            (
+                localize(command.title),
+                localize(command.hint),
+                *(localize(keyword) for keyword in command.keywords),
+            )
+        ).lower()
         direct = haystack.find(normalized)
         if direct >= 0:
-            return (0, direct, command.title)
+            return (0, direct, localize(command.title))
         position = -1
         gap = 0
         for character in normalized:
@@ -52,7 +63,7 @@ def filter_commands(query: str) -> tuple[PaletteCommand, ...]:
             if position >= 0:
                 gap += next_position - position - 1
             position = next_position
-        return (1, gap, command.title)
+        return (1, gap, localize(command.title))
 
     ranked = [(match, command) for command in COMMANDS if (match := score(command))]
     ranked.sort(key=lambda item: item[0])

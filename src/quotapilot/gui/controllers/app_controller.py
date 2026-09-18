@@ -8,6 +8,7 @@ from PySide6.QtCore import Property, QObject, Signal, Slot
 
 from ..async_runner import AsyncRunner
 from ..dependencies import GuiDependencies
+from ..localization import TranslationManager
 from ..viewmodels.command_palette import CommandPaletteViewModel
 from ..viewmodels.execute import ExecuteViewModel
 from ..viewmodels.history import HistoryViewModel
@@ -23,7 +24,13 @@ PAGES = ("Overview", "Usage", "Models", "Route", "Execute", "History", "Settings
 class AppController(QObject):
     navigationChanged = Signal()
 
-    def __init__(self, dependencies: GuiDependencies, *, smoke_mode: bool = False) -> None:
+    def __init__(
+        self,
+        dependencies: GuiDependencies,
+        translation_manager: TranslationManager,
+        *,
+        smoke_mode: bool = False,
+    ) -> None:
         super().__init__()
         self.runner = AsyncRunner(self)
         self.overview = OverviewViewModel(dependencies, self.runner)
@@ -34,11 +41,14 @@ class AppController(QObject):
         self.history = HistoryViewModel(dependencies, self.runner)
         self.settings = SettingsViewModel(dependencies, self.runner)
         self.palette = CommandPaletteViewModel()
+        self._translation_manager = translation_manager
         self._page_index = 0
         self._details_visible = False
         self._smoke_mode = smoke_mode
         self.route.recommendationReady.connect(self.overview.set_recommendation)
         self.palette.commandActivated.connect(self.triggerCommand)
+        self.settings.languageSaved.connect(self._apply_language)
+        self._translation_manager.languageChanged.connect(self.palette.retranslate)
 
     @Property(int, notify=navigationChanged)
     def pageIndex(self) -> int:  # noqa: N802
@@ -101,6 +111,10 @@ class AppController(QObject):
     @Slot()
     def initialize(self) -> None:
         self.overview.load()
+
+    @Slot(str)
+    def _apply_language(self, preference: str) -> None:
+        self._translation_manager.set_preference(preference)
 
     def _load_page(self, page: str) -> None:
         if page == "Overview":

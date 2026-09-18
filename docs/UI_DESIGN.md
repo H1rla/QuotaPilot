@@ -1079,3 +1079,15 @@ UI design implementation is correct when:
 13. Window works on laptop-scale displays.
 14. No raw account/private metadata is exposed.
 15. Visual design remains minimal and developer-oriented.
+
+## 51. Localization and provider status
+
+The GUI supports System, English, and Japanese. Japanese labels may expand;
+controls must reflow or elide technical values without clipping primary
+actions. Prefer a Japanese-capable system font fallback and retain canonical
+model/provider IDs, paths, config keys, and CLI commands.
+
+Provider status is secondary on Overview. Use one compact ruled section with
+connection/authentication, last refresh, and data freshness. Connected is a
+small success state, not a dominant green card. Unavailable, Not authenticated,
+Unknown, and persisted STALE data retain explicit text and semantic colors.

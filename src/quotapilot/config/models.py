@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from enum import StrEnum
+
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from quotapilot.budget.models import BudgetConfig
@@ -54,6 +56,22 @@ class ProfilesConfig(BaseModel):
         return value
 
 
+class LanguagePreference(StrEnum):
+    """Supported GUI language selection modes."""
+
+    SYSTEM = "system"
+    ENGLISH = "en"
+    JAPANESE = "ja"
+
+
+class AppearanceConfig(BaseModel):
+    """Presentation preferences that are safe to apply independently."""
+
+    model_config = ConfigDict(frozen=True, strict=True, extra="forbid")
+
+    language: LanguagePreference = LanguagePreference.SYSTEM
+
+
 class AppConfig(BaseModel):
     """Effective application policy with no duplicated policy definitions."""
 
@@ -65,3 +83,4 @@ class AppConfig(BaseModel):
     routing: RoutingPolicy = Field(default_factory=RoutingPolicy)
     execution: ExecutionPolicy = Field(default_factory=ExecutionPolicy)
     profiles: ProfilesConfig = Field(default_factory=ProfilesConfig)
+    appearance: AppearanceConfig = Field(default_factory=AppearanceConfig)

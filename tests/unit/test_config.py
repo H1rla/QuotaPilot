@@ -14,6 +14,7 @@ from quotapilot.config import (
     ConfigValidationError,
     load_effective_config,
 )
+from quotapilot.config.models import LanguagePreference
 from quotapilot.execution.models import ExecutionMode
 
 runner = CliRunner()
@@ -30,6 +31,7 @@ def test_absent_config_uses_strict_defaults(tmp_path: Path) -> None:
     assert effective.file_present is False
     assert effective.config.budget.reserve_fraction == 0.10
     assert effective.config.execution.mode is ExecutionMode.ALWAYS_CONFIRM
+    assert effective.config.appearance.language is LanguagePreference.SYSTEM
     assert effective.sources["budget.reserve_fraction"] == "policy-default"
 
 
@@ -42,6 +44,8 @@ budget:
   timezone: Asia/Tokyo
 execution:
   mode: never_execute
+appearance:
+  language: ja
 """,
     )
 
@@ -50,6 +54,7 @@ execution:
     assert effective.config.budget.reserve_fraction == 0.2
     assert effective.config.budget.timezone == "Asia/Tokyo"
     assert effective.config.execution.mode is ExecutionMode.NEVER_EXECUTE
+    assert effective.config.appearance.language is LanguagePreference.JAPANESE
     assert effective.sources["budget.reserve_fraction"] == "user-config"
 
 
@@ -62,6 +67,7 @@ execution:
         ("budget:\n  reserve_fraction: true\n", ConfigValidationError),
         ("budget:\n  timezone: Mars/Olympus\n", ConfigValidationError),
         ("execution:\n  mode: maybe\n", ConfigValidationError),
+        ("appearance:\n  language: klingon\n", ConfigValidationError),
     ],
 )
 def test_malformed_or_invalid_config_is_rejected(
