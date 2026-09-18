@@ -16,6 +16,10 @@ Semantic Versioning while pre-1.0 interfaces may still evolve.
 - Strict layered user configuration.
 - Privacy-safe status, Waybar JSON, and structured doctor diagnostics.
 - Wheel/sdist build and offline release smoke coverage.
+- PySide6/Qt Quick desktop GUI with seven operational screens, direct service
+  integration, async workers, keyboard navigation, and a command palette.
+- Explicit UNKNOWN/STALE/error presentation, persisted usage visualization,
+  model provenance inspection, and safe settings editing.
 
 ### Security
 

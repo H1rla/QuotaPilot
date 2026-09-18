@@ -945,3 +945,43 @@ The MIT declaration already present in package metadata is now accompanied by
 the full license text. Repository review found no copied or substantially
 adapted third-party implementation requiring a NOTICE; dependencies remain
 separately licensed and are not vendored.
+
+---
+
+## 2026-09-18 — Phase 8: Qt presentation remains downstream of core services
+
+### Direct service composition and worker isolation
+
+**Decision**: The desktop application uses PySide6/Qt Quick with the dependency
+direction `Core Services -> GUI ViewModels/Controllers -> QML`. One GUI
+composition root constructs the existing status, budget, capability, routing,
+and controlled-execution services. Provider capture, SQLite access, routing,
+plan creation, and execution run through coroutine workers on `QThreadPool`;
+the Qt main thread receives only UI-ready immutable values.
+
+QML performs no quota math, routing, SQLite, provider RPC, or CLI subprocess
+wrapping. The existing Codex execution adapter remains the only subprocess
+boundary, reached through `ExecutionService` and its approval/revalidation
+policy. An initial real plan is approved only by the explicit Execute-screen
+confirmation; a materially different escalation is not silently approved.
+
+### Unknown/history/settings boundaries
+
+**Decision**: GUI mappings retain `None` as textual `Unknown`/`Unavailable` and
+retain stale snapshots with age plus a `STALE` label. Historical charts are
+built only from persisted snapshots and never interpolate absent samples.
+Phase 6 intentionally has no execution-audit persistence, so History states
+that fact instead of inventing task or execution rows.
+
+The central config models remain authoritative. Phase 8 adds one atomic YAML
+writer for an already-validated `AppConfig`; the GUI saves common settings but
+does not duplicate policy schemas. Saved changes take effect on the next GUI
+launch so an in-flight service graph is never partially reconfigured.
+
+### Command and packaging surface
+
+**Decision**: `quotapilot gui` lazily imports Qt so established CLI commands do
+not pay a GUI import cost. PySide6 is a runtime dependency, while QML/JS assets
+live inside the Python package and are included by Hatchling's normal package
+data discovery. The command palette contains navigation and safe actions only;
+real execution cannot be triggered directly from it.

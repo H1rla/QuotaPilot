@@ -92,3 +92,13 @@ are not identical to already-normalized in-process policy values.
 **Rule going forward**: Parse only documented string/enum forms explicitly in
 the config loader, preserve unknown and empty mappings through the merge, then
 run the authoritative strict models once after precedence is resolved.
+
+## 2026-09-18 — QML model roles must not shadow QQuickItem state
+**What happened**: A history delegate and shared status component exposed a
+role/property named `state`, which shadows QQuickItem's built-in state machine
+property and caused a native crash while the full QML tree was instantiated.
+**Why**: QML permits many dynamic names, but built-in item properties still
+participate in meta-object construction and are not safe role aliases.
+**Rule going forward**: Name domain status roles explicitly (`statusValue`,
+`statusText`) and run both `qmllint` and full-engine smoke after adding a QML
+delegate or shared component.

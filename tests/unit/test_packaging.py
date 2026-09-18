@@ -36,3 +36,24 @@ def test_wheel_configuration_includes_required_runtime_assets() -> None:
     assert included["calibration/scenarios.yaml"] == (
         "quotapilot/_data/calibration/scenarios.yaml"
     )
+
+
+def test_gui_runtime_dependency_and_qml_assets_are_present() -> None:
+    metadata = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    qml = ROOT / "src" / "quotapilot" / "gui" / "qml"
+
+    assert any(
+        dependency.startswith("pyside6")
+        for dependency in metadata["project"]["dependencies"]
+    )
+    assert (qml / "Main.qml").is_file()
+    assert (qml / "Tokens.js").is_file()
+    assert {
+        "Overview.qml",
+        "Usage.qml",
+        "Models.qml",
+        "Route.qml",
+        "Execute.qml",
+        "History.qml",
+        "Settings.qml",
+    } <= {path.name for path in qml.glob("*.qml")}

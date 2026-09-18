@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Vector — static analysis workspace</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --page: hsl(0 20% 99%);
+      --subtle: hsl(0 8% 97%);
+      --subtle-hover: hsl(0 8% 94%);
+      --strong: hsl(0 5% 12%);
+      --strong-hover: hsl(0 5% 18%);
+      --feedback: hsl(62 84% 88%);
+      --feedback-soft: hsl(64 74% 95%);
+      --text: hsl(0 1% 39%);
+      --weak: hsl(0 1% 60%);
+      --weaker: hsl(30 2% 81%);
+      --ink: hsl(0 5% 12%);
+      --inverse: hsl(0 20% 99%);
+      --rule: hsl(0 100% 3% / .12);
+      --pad: 80px;
+      --section: 64px;
+      --mono: "IBM Plex Mono", "Noto Sans Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --page: hsl(0 9% 7%); --subtle: hsl(0 6% 10%); --subtle-hover: hsl(0 6% 15%);
+        --strong: hsl(0 15% 94%); --strong-hover: hsl(0 15% 97%); --feedback: hsl(62 100% 90%);
+        --feedback-soft: hsl(60 20% 8%); --text: hsl(0 4% 71%); --weak: hsl(0 2% 49%);
+        --weaker: hsl(0 3% 28%); --ink: hsl(0 15% 94%); --inverse: hsl(0 9% 7%); --rule: hsl(0 4% 23%);
+      }
+    }
+    * { box-sizing: border-box; }
+    html { background: var(--page); }
+    body { margin: 0; background: var(--page); color: var(--text); font: 400 16px/1.5 var(--mono); }
+    a { color: var(--ink); text-decoration: none; }
+    button, input { font: inherit; }
+    button, a { -webkit-tap-highlight-color: transparent; }
+    :focus-visible { outline: 2px solid var(--strong); outline-offset: 2px; }
+    .shell { width: min(1080px, 100%); margin-inline: auto; border-inline: 1px solid var(--rule); }
+    .top { position: sticky; z-index: 10; top: 0; height: 80px; padding-inline: var(--pad); display: flex; align-items: center; justify-content: space-between; background: var(--page); border-bottom: 1px solid var(--rule); }
+    .brand { color: var(--ink); font-weight: 700; font-size: 20px; letter-spacing: -.06em; }
+    .nav { display: flex; align-items: center; gap: 32px; }
+    .nav a:hover, .legal a:hover { text-decoration: underline; text-underline-offset: 4px; }
+    .action { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 8px 12px 8px 20px; border: 0; border-radius: 4px; color: var(--inverse); background: var(--strong); font-weight: 500; cursor: pointer; }
+    .action:hover { background: var(--strong-hover); }
+    .menu { display: none; width: 40px; height: 40px; border: 0; background: transparent; color: var(--ink); cursor: pointer; }
+    .mobile-nav { display: none; position: fixed; z-index: 9; inset: 80px 0 0; background: var(--page); padding: 20px 0; }
+    .mobile-nav a { display: block; padding: 20px 24px; }
+    .mobile-nav a:hover { background: var(--subtle); }
+    .hero { padding: 96px var(--pad); }
+    .notice { display: flex; align-items: center; gap: 12px; margin-bottom: 32px; }
+    .mobile-note { display: none; }
+    .badge { padding: 4px 8px; color: var(--inverse); background: var(--strong); font-weight: 500; line-height: 1; }
+    h1, h2, h3, p { margin: 0; }
+    h1 { color: var(--ink); font-size: 38px; line-height: 1.5; margin-bottom: 8px; }
+    .lede { max-width: 82%; line-height: 2; margin-bottom: 32px; }
+    .install { overflow: hidden; }
+    .tabs { display: flex; align-items: center; gap: 40px; padding-inline: 20px; overflow-x: auto; background: var(--subtle); border: 1px solid var(--rule); border-bottom: 0; border-radius: 6px 6px 0 0; }
+    .tab { flex: 0 0 auto; padding: 16px 0; border: 0; border-bottom: 2px solid transparent; color: var(--weak); background: transparent; cursor: pointer; line-height: 1; }
+    .tab[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--strong); }
+    .command-panel { padding: 16px; background: var(--subtle); border: 1px solid var(--rule); border-radius: 0 0 6px 6px; }
+    .command { display: flex; align-items: center; gap: 16px; max-width: 100%; padding: 8px 16px 8px 8px; border: 0; border-radius: 4px; color: var(--text); background: transparent; cursor: pointer; }
+    .command:hover { background: var(--subtle-hover); }
+    .command code { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: inherit; }
+    .command strong { color: var(--ink); font-weight: 500; }
+    .copy { width: 16px; height: 16px; flex: 0 0 auto; color: var(--weaker); }
+    .demo { min-height: 380px; padding: 56px var(--pad); display: grid; grid-template-columns: 1fr .78fr; align-items: end; gap: 64px; color: hsl(0 0% 85%); background: hsl(0 0% 3%); border-top: 1px solid var(--rule); }
+    .demo pre { margin: 0; overflow: hidden; color: hsl(0 0% 62%); font: 14px/1.8 var(--mono); }
+    .demo strong { color: hsl(0 0% 94%); font-weight: 500; }
+    .scan { height: 220px; opacity: .72; background: repeating-linear-gradient(to bottom, transparent 0 14px, hsl(0 0% 30%) 15px 16px); }
+    .band { padding: var(--section) var(--pad); border-top: 1px solid var(--rule); }
+    .section-title { margin-bottom: 24px; }
+    .section-title h2 { margin-bottom: 12px; color: var(--ink); font-size: 16px; line-height: 1.5; }
+    .section-title p { line-height: 2; }
+    .features { display: grid; gap: 16px; }
+    .feature { display: grid; grid-template-columns: 28px 150px 1fr; gap: 12px; line-height: 2; }
+    .mark { color: var(--weak); }
+    .feature strong { color: var(--ink); font-weight: 500; }
+    .stats { margin: 48px 0 0 40px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 64px; }
+    .stat { display: grid; gap: 24px; }
+    .plot { height: 150px; border-bottom: 1px solid var(--weaker); opacity: .65; }
+    .plot.line { clip-path: polygon(0 94%, 18% 86%, 34% 72%, 49% 69%, 66% 41%, 82% 25%, 100% 4%, 100% 100%, 0 100%); background: repeating-linear-gradient(150deg, transparent 0 5px, var(--weaker) 6px 7px); }
+    .plot.dots { background-image: radial-gradient(var(--weaker) 1.6px, transparent 1.8px); background-size: 12px 12px; }
+    .plot.bars { background: repeating-linear-gradient(90deg, var(--weaker) 0 1px, transparent 1px 8px); clip-path: polygon(0 42%, 8% 28%, 16% 51%, 25% 18%, 34% 46%, 43% 32%, 52% 56%, 61% 20%, 70% 38%, 78% 14%, 88% 34%, 100% 10%, 100% 100%, 0 100%); }
+    .stat-label { display: flex; gap: 10px; font-size: 14px; }
+    .stat-label strong { color: var(--ink); font-weight: 500; }
+    .stat-label span { color: var(--weak); }
+    .faq { display: grid; gap: 24px; }
+    .faq-item button { display: flex; align-items: flex-start; gap: 16px; min-height: 32px; padding: 0; border: 0; color: var(--ink); background: transparent; font-weight: 500; text-align: left; cursor: pointer; }
+    .faq-icon { width: 24px; color: var(--weak); font-size: 20px; font-weight: 400; }
+    .answer { display: none; margin: 8px 0 8px 40px; line-height: 2; }
+    .faq-item[data-open] .answer { display: block; }
+    .signup { position: relative; }
+    .signup input { width: 100%; height: 66px; padding: 20px 112px 20px 20px; border: 1px solid var(--rule); border-radius: 6px; color: var(--ink); background: var(--subtle); }
+    .signup input:focus { outline: 0; border-color: var(--strong); background: var(--feedback-soft); box-shadow: 0 0 0 3px var(--feedback); }
+    .signup button { position: absolute; right: 12px; top: 13px; }
+    footer { display: grid; grid-template-columns: repeat(5, 1fr); border-top: 1px solid var(--rule); }
+    footer a { padding-block: 32px; text-align: center; }
+    footer a + a { border-left: 1px solid var(--rule); }
+    footer a:hover { background: var(--subtle); text-decoration: underline; text-underline-offset: 4px; }
+    .legal { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px 32px; padding: 64px 24px 80px; color: var(--weak); }
+    .legal a { color: var(--weak); }
+    @media (max-width: 65rem) { .shell { border-inline: 0; } }
+    @media (max-width: 60rem) {
+      :root { --pad: 24px; --section: 48px; }
+      body { font-size: 15px; line-height: 1.5; }
+      .hero { padding-block: 72px; }
+      h1 { font-size: 22px; line-height: 1.5; }
+      .lede, .section-title p { line-height: 1.8; }
+      .tabs { gap: 32px; }
+      .stats { gap: 48px; }
+    }
+    @media (max-width: 55rem) { .nav .action { display: none; } .nav { gap: 24px; } }
+    @media (max-width: 50rem) { .lede { max-width: 100%; } .demo { grid-template-columns: 1fr; } }
+    @media (max-width: 40rem) {
+      .nav { display: none; } .menu { display: block; } .mobile-nav[data-open] { display: block; }
+      .stats { display: none; }
+      .feature { grid-template-columns: 28px 1fr; }
+      .feature span:last-child { grid-column: 2; }
+      .demo { min-height: 220px; padding-block: 32px; } .scan { display: none; }
+    }
+    @media (max-width: 30rem) {
+      .hero { padding-block: 48px; }
+      .notice .desktop-note { display: none; } .notice .mobile-note { display: inline; color: var(--ink); }
+      .signup input { height: 124px; padding: 20px 20px 80px; }
+      .signup button { left: 20px; right: 20px; top: auto; bottom: 20px; justify-content: center; }
+    }
+    @media (max-width: 25rem) {
+      footer { grid-template-columns: 1fr; }
+      footer a + a { border-left: 0; border-top: 1px solid var(--rule); }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="shell">
+      <header class="top">
+        <a class="brand" href="#">VECTOR</a>
+        <nav class="nav" aria-label="Primary">
+          <a href="#features">Workspace</a><a href="#evidence">Rules</a><a href="#faq">Guide</a>
+          <a class="action" href="#start">↓ Start scan</a>
+        </nav>
+        <button class="menu" aria-expanded="false" aria-controls="mobile-nav" aria-label="Open menu">☰</button>
+      </header>
+      <nav id="mobile-nav" class="mobile-nav" aria-label="Mobile">
+        <a href="#">Home</a><a href="#features">Workspace</a><a href="#evidence">Rules</a><a href="#faq">Guide</a><a href="#start">Start scan</a>
+      </nav>
+      <section class="hero">
+        <div class="notice"><span class="badge">NEW</span><span class="desktop-note">Cross-repository analysis is available in preview.</span><span class="mobile-note">Preview build available</span></div>
+        <h1>Static analysis without the ceremony</h1>
+        <p class="lede">Vector maps code paths, ranks findings, and keeps every decision traceable from a compact local workspace.</p>
+        <div class="install">
+          <div class="tabs" role="tablist" aria-label="Install method">
+            <button class="tab" role="tab" aria-selected="true" data-command="curl -fsSL vector.dev/install | sh">shell</button>
+            <button class="tab" role="tab" aria-selected="false" data-command="cargo install vector-workspace">cargo</button>
+            <button class="tab" role="tab" aria-selected="false" data-command="brew install vector-labs/tap/vector">brew</button>
+          </div>
+          <div class="command-panel"><button class="command" type="button"><code>curl -fsSL <strong>vector.dev/install</strong> | sh</code><span class="copy" aria-hidden="true">⧉</span></button></div>
+        </div>
+      </section>
+      <section class="demo" aria-label="Analysis preview">
+        <pre><strong>vector scan ./service</strong>
+
+[1] tracing request boundary
+[2] resolving 128 call edges
+[3] ranking 06 actionable paths
+
+result  no critical findings</pre>
+        <div class="scan" aria-hidden="true"></div>
+      </section>
+      <section id="features" class="band">
+        <div class="section-title"><h2>One workspace, explicit evidence</h2><p>Every result stays close to the code and the reasoning that produced it.</p></div>
+        <div class="features">
+          <div class="feature"><span class="mark">[*]</span><strong>Path aware</strong><span>Trace findings across boundaries instead of scanning files in isolation.</span></div>
+          <div class="feature"><span class="mark">[*]</span><strong>Reviewable</strong><span>Keep assumptions, suppressions, and ownership visible to the whole team.</span></div>
+          <div class="feature"><span class="mark">[*]</span><strong>Local first</strong><span>Run the analysis next to the repository and export only deliberate artifacts.</span></div>
+        </div>
+      </section>
+      <section id="evidence" class="band">
+        <div class="section-title"><h2>Signal that stays legible</h2><p>Compact measurements show coverage without turning the interface into a dashboard.</p></div>
+        <div class="stats">
+          <div class="stat"><div class="plot line"></div><div class="stat-label"><strong>2.4×</strong><span>faster triage</span></div></div>
+          <div class="stat"><div class="plot dots"></div><div class="stat-label"><strong>128</strong><span>paths mapped</span></div></div>
+          <div class="stat"><div class="plot bars"></div><div class="stat-label"><strong>94%</strong><span>review coverage</span></div></div>
+        </div>
+      </section>
+      <section id="faq" class="band">
+        <div class="section-title"><h2>FAQ</h2></div>
+        <div class="faq">
+          <div class="faq-item"><button aria-expanded="false"><span class="faq-icon">+</span><span>Does Vector upload source code?</span></button><p class="answer">No. The example workspace is designed around local analysis and explicit exports.</p></div>
+          <div class="faq-item"><button aria-expanded="false"><span class="faq-icon">+</span><span>Can it run in continuous integration?</span></button><p class="answer">Yes. The same command can emit a stable machine-readable report.</p></div>
+          <div class="faq-item"><button aria-expanded="false"><span class="faq-icon">+</span><span>How are findings prioritized?</span></button><p class="answer">Reachability, ownership, and evidence quality are combined into a review queue.</p></div>
+        </div>
+      </section>
+      <section id="start" class="band">
+        <div class="section-title"><h2>Get the next workspace build</h2><p>One quiet note when a new local preview is ready.</p></div>
+        <form class="signup"><input type="email" aria-label="Email address" placeholder="Email address"><button class="action" type="button">Join preview</button></form>
+      </section>
+      <footer><a href="#">Source</a><a href="#">Guide</a><a href="#">Releases</a><a href="#">Community</a><a href="#">Status</a></footer>
+    </div>
+    <div class="legal"><span>©2026 Vector Labs</span><a href="#">Brand</a><a href="#">Privacy</a><a href="#">Terms</a><a href="#">English⌄</a></div>
+  </main>
+  <script>
+    const menu = document.querySelector('.menu');
+    const mobileNav = document.querySelector('.mobile-nav');
+    menu.addEventListener('click', () => {
+      const open = !mobileNav.hasAttribute('data-open');
+      mobileNav.toggleAttribute('data-open', open);
+      menu.setAttribute('aria-expanded', String(open));
+      menu.textContent = open ? '×' : '☰';
+    });
+    const formatCommand = (command) => command.replace(/(vector(?:-workspace)?(?:\.dev\/install)?)/, '<strong>$1</strong>');
+    document.querySelectorAll('.tab').forEach((tab) => tab.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach((item) => item.setAttribute('aria-selected', String(item === tab)));
+      document.querySelector('.command code').innerHTML = formatCommand(tab.dataset.command);
+    }));
+    document.querySelector('.command').addEventListener('click', (event) => {
+      navigator.clipboard?.writeText(event.currentTarget.innerText.trim());
+      const icon = event.currentTarget.querySelector('.copy'); icon.textContent = '✓';
+      setTimeout(() => { icon.textContent = '⧉'; }, 1200);
+    });
+    document.querySelectorAll('.faq-item button').forEach((button) => button.addEventListener('click', () => {
+      const item = button.closest('.faq-item'); const open = !item.hasAttribute('data-open');
+      item.toggleAttribute('data-open', open); button.setAttribute('aria-expanded', String(open));
+      button.querySelector('.faq-icon').textContent = open ? '−' : '+';
+    }));
+  </script>
+</body>
+</html>

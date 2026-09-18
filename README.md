@@ -14,7 +14,8 @@ quota.
 
 QuotaPilot is a pre-1.0 Linux-tested project. Its provider, persistence,
 budget, routing, capability-profile, controlled-execution, and product CLI
-boundaries are implemented. Routing coefficients and bundled model profiles
+boundaries are implemented. The Phase 8 PySide6/QML desktop GUI is implemented
+and undergoing release-candidate verification. Routing coefficients and bundled model profiles
 are deterministic and reviewable, but remain heuristic and provisionally
 calibrated.
 
@@ -30,6 +31,8 @@ calibrated.
 - Dry-run-first, explicitly authorized Codex execution with live quota and
   capability revalidation, timeouts, bounded output, and bounded escalation.
 - Privacy-safe `status`, `models`, `doctor`, and Waybar JSON surfaces.
+- Dark, keyboard-first desktop GUI with Overview, Usage, Models, Route,
+  Execute, History, Settings, and a `Ctrl+P` command palette.
 
 ## Safety and privacy
 
@@ -90,6 +93,7 @@ quotapilot budget
 quotapilot models
 quotapilot route "Fix typo in README"
 quotapilot execute "Fix typo in README" --dry-run
+quotapilot gui
 ```
 
 `status`, `budget`, `models`, routing, and dry-run use the latest persisted
@@ -112,6 +116,7 @@ quotapilot calibrate evaluate [--json]
 quotapilot execute TASK --dry-run [--json]
 quotapilot execute TASK
 quotapilot waybar
+quotapilot gui
 ```
 
 Expected application failures are concise. Script-relevant exit behavior is:
@@ -235,6 +240,7 @@ Providers -> Domain -> Persistence
                          Capability profiles
 
 CLI / Waybar -> Services -> existing core boundaries
+GUI ViewModels / Controllers -> Services -> QML views
 ```
 
 Provider-specific RPC and subprocess details remain in adapters. Budget and
@@ -250,9 +256,10 @@ use Codex authentication or execute paid models.
 
 ## Roadmap
 
-Next work should observe and calibrate real recommendations without changing
-the conservative safety boundaries. Publishing, tags, hosted telemetry, and
-autonomous background execution are intentionally out of scope.
+Next work is final release-candidate verification, including GUI interaction
+review on the target desktop. Publishing or tagging still requires explicit
+user approval; hosted telemetry and autonomous background execution remain out
+of scope.
 
 ## License
 

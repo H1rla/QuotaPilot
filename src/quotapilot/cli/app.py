@@ -13,6 +13,7 @@ from quotapilot.cli.calibrate import app as calibrate_app
 from quotapilot.cli.config import app as config_app
 from quotapilot.cli.doctor import doctor
 from quotapilot.cli.execute import execute
+from quotapilot.cli.gui import gui
 from quotapilot.cli.models import models
 from quotapilot.cli.route import route
 from quotapilot.cli.status import status
@@ -33,6 +34,7 @@ app.command("execute")(execute)
 app.command("status")(status)
 app.command("waybar")(waybar)
 app.command("doctor")(doctor)
+app.command("gui")(gui)
 
 
 def _version_callback(value: bool) -> None:

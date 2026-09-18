@@ -1,0 +1,7 @@
+interface:
+  display_name: "QuotaPilot UI"
+  short_description: "OpenCode-inspired QuotaPilot desktop UI with green accent"
+  brand_color: "#7EE787"
+  default_prompt: "Apply the QuotaPilot UI skill and follow the repository's Phase 8 GUI contract."
+policy:
+  allow_implicit_invocation: true
