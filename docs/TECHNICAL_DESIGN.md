@@ -1350,11 +1350,33 @@ Git-reviewable root artifacts and are packaged into wheels. See
 
 This phase remains advisory. It does not execute model recommendations.
 
-### Phase 6 — CLI dashboard and controlled integration
+### Phase 6 — Controlled Execution & Agent Integration
 
-Implement `status`, `doctor`, and `history`, then design any controlled
-execution/integration boundary separately. Budget and advisory route CLI
-output already exist from Phases 4 and 5. Phase 5 performs no execution.
+Implemented. `src/quotapilot/execution/` adds strict execution plans/results,
+a separate authorization policy, a pure planner, bounded retry/escalation, and
+a provider-neutral adapter protocol. `ExecutionService` composes the existing
+route stack with a coherent live usage capture before every real attempt; it
+invalidates a plan on material quota, capability, effort, profile-freshness,
+or recommendation change.
+
+`quotapilot execute TASK --dry-run [--json]` renders a privacy-safe plan and
+never invokes either the provider or Codex. Real execution defaults to
+`always_confirm`, and a materially different escalation plan requires new
+approval. The initial Codex CLI adapter uses structured subprocess arguments,
+stdin task delivery, an explicit working directory, `workspace-write`
+sandboxing, a mandatory timeout, process cleanup, and credential-redacted
+bounded output tails. It persists neither raw task text nor agent output.
+
+Retry is same model/effort and is limited to explicitly configured transient
+failure classes. Escalation is distinct, follows only the Phase 5 advisory
+path, rechecks quota/capabilities first, and remains bounded by total attempts.
+Authentication and user cancellation never escalate. See
+`docs/PHASE6_EXECUTION_CONTRACT.md` for the complete boundary and verified
+Codex CLI 0.155.0 invocation.
+
+The previously sketched `status`, `doctor`, and `history` dashboard commands
+remain outside this phase; their absence does not alter the execution safety
+boundary.
 
 ### Phase 7 — desktop integration
 

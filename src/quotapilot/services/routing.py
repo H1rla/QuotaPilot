@@ -2,20 +2,35 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import UTC, datetime
 
 from quotapilot.budget.engine import BudgetEngine
+from quotapilot.budget.models import BudgetReport
 from quotapilot.capabilities.enrichment import CapabilityEnricher
 from quotapilot.capabilities.registry import ModelProfileRegistry
 from quotapilot.domain.capability import CapabilitySet
+from quotapilot.domain.usage import UsageSnapshot
 from quotapilot.history.repository import SnapshotRepository
 from quotapilot.routing.engine import RoutingEngine
 from quotapilot.routing.models import (
     RecommendationConfidence,
     RoutingRecommendation,
+    TaskProfile,
     TaskProfileOverrides,
 )
 from quotapilot.routing.profiler import TaskProfiler
+
+
+@dataclass(frozen=True, slots=True)
+class RoutingContext:
+    """Advisory recommendation plus the exact normalized inputs it used."""
+
+    provider: str
+    recommendation: RoutingRecommendation
+    budget_report: BudgetReport
+    capabilities: CapabilitySet
+    snapshot_captured_at: datetime
 
 
 class RoutingService:
@@ -47,11 +62,54 @@ class RoutingService:
         overrides: TaskProfileOverrides | None = None,
         provider: str | None = None,
     ) -> RoutingRecommendation | None:
+        context = await self.recommend_latest_context(
+            summary,
+            now=now,
+            overrides=overrides,
+            provider=provider,
+        )
+        return context.recommendation if context is not None else None
+
+    async def recommend_latest_context(
+        self,
+        summary: str,
+        *,
+        now: datetime,
+        overrides: TaskProfileOverrides | None = None,
+        provider: str | None = None,
+    ) -> RoutingContext | None:
+        """Return the latest recommendation with its budget/capability context."""
         snapshot = await self._repository.get_latest_snapshot(provider=provider)
         if snapshot is None:
             return None
-        budget = self._budget_engine.evaluate(snapshot, now=now)
+        return self.recommend_snapshot(
+            snapshot,
+            summary,
+            now=now,
+            overrides=overrides,
+        )
+
+    def recommend_snapshot(
+        self,
+        snapshot: UsageSnapshot,
+        summary: str,
+        *,
+        now: datetime,
+        overrides: TaskProfileOverrides | None = None,
+    ) -> RoutingContext:
+        """Route one coherent snapshot without provider or persistence I/O."""
         profile = self._profiler.profile(summary, overrides)
+        return self.recommend_profile_snapshot(snapshot, profile, now=now)
+
+    def recommend_profile_snapshot(
+        self,
+        snapshot: UsageSnapshot,
+        profile: TaskProfile,
+        *,
+        now: datetime,
+    ) -> RoutingContext:
+        """Route one snapshot with an already-audited deterministic profile."""
+        budget = self._budget_engine.evaluate(snapshot, now=now)
         capabilities = snapshot.account.capabilities
         if self._capability_enricher is not None and self._profile_registry is not None:
             capabilities = self._capability_enricher.enrich(
@@ -62,7 +120,14 @@ class RoutingService:
         recommendation = self._routing_engine.recommend(
             profile, budget, capabilities
         )
-        return self._attach_profile_provenance(recommendation, capabilities)
+        recommendation = self._attach_profile_provenance(recommendation, capabilities)
+        return RoutingContext(
+            provider=snapshot.account.provider,
+            recommendation=recommendation,
+            budget_report=budget,
+            capabilities=capabilities,
+            snapshot_captured_at=snapshot.captured_at,
+        )
 
     @staticmethod
     def _attach_profile_provenance(

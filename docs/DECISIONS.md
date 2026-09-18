@@ -840,3 +840,49 @@ capability-floor, UNKNOWN-quota, effort, selectability, and determinism
 metrics. Calibration performs no coefficient search, profile mutation,
 telemetry collection, or recommendation execution. Policy changes remain
 human-reviewed Git changes.
+
+---
+
+## 2026-09-18 — Phase 6: recommendation and execution authorization are separate
+
+### Approval and plan invalidation
+
+**Decision**: A `RoutingRecommendation` can produce an inspectable
+`ExecutionPlan`, but never authorizes it. Real execution defaults to
+`always_confirm`. Approval applies to the displayed model, effort, provider,
+task digest, quota context, and escalation step. A material quota change,
+changed recommendation, or changed capability invalidates the plan rather
+than silently substituting another action. Each materially different
+escalation plan requires a new approval.
+
+### Live revalidation and bounded state transitions
+
+**Decision**: Every real attempt—including retries and escalations—uses a new
+coherent `capture_usage()` result, recomputes the Phase 4 budget, re-enriches
+current exact capabilities, and re-runs the Phase 5 route with the original
+audited `TaskProfile`. Retry preserves model/effort and defaults to one
+transport retry. Escalation consumes only the existing route path and defaults
+to structured agent/verification failure. Authentication, quota failure,
+execution-environment failure, and user cancellation cannot be configured for
+retry or escalation. Total attempts are always finite.
+
+### Codex adapter and subprocess boundary
+
+**Decision**: The verified Codex CLI 0.155.0 invocation is `codex
+--ask-for-approval never exec --ephemeral --model … --config
+model_reasoning_effort=… --sandbox workspace-write --cd … --color never -`.
+QuotaPilot uses `asyncio.create_subprocess_exec` and sends task text over stdin;
+it never constructs a shell command. QuotaPilot is the outer approval boundary,
+while Codex's inner approval mode is `never` so non-interactive execution cannot
+hang on an unobserved prompt. The adapter has a mandatory timeout, terminates
+and reaps on timeout/cancellation, and drains stdout/stderr concurrently into
+separately bounded tails.
+
+### Execution privacy
+
+**Decision**: Phase 6 adds no execution-audit persistence. The raw task and
+full output stay in memory. Serialized plans exclude task text and the full
+profile summary, retaining only task class and a provider-independent SHA-256
+correlation digest (which is not claimed to protect low-entropy inputs).
+Execution results retain bounded, credential-redacted output summaries and do
+not serialize the environment or provider response.

@@ -63,3 +63,22 @@ or whether it is still safe to apply.
 **Rule going forward**: Fill only missing capability fields, preserve field
 provenance across repeated enrichment, require exact model IDs, and keep
 stale/future/unknown-freshness profiles visible but non-operative.
+
+## 2026-09-18 — Approval must bind an action, not an advisory route
+**What happened**: Phase 6 needed to turn an advisory recommendation into an
+external process without treating an old model/quota choice as permanent
+permission.
+**Why**: Quota and capability state can change between planning, approval,
+retry, and escalation; an escalation is also a materially different action.
+**Rule going forward**: Bind approval to an inspectable plan, refresh coherent
+quota and exact capabilities immediately before every attempt, stop on
+material change, and require new approval for a changed escalation step.
+
+## 2026-09-18 — Process output must be bounded while it is read
+**What happened**: Capturing a full agent transcript before truncating it would
+still allow memory growth and unnecessary secret retention.
+**Why**: Post-hoc truncation does not bound buffering and subprocess pipes can
+deadlock unless stdout and stderr are consumed concurrently.
+**Rule going forward**: Drain both streams concurrently into fixed-size tails,
+redact retained summaries, enforce a timeout, and terminate/reap the process on
+timeout, cancellation, or transport failure.
