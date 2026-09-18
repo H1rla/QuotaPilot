@@ -64,6 +64,106 @@ async def test_newer_schema_version_fails_clearly(tmp_path: Path) -> None:
         await conn.close()
 
 
+async def test_empty_version_table_in_existing_database_fails(tmp_path: Path) -> None:
+    conn = await aiosqlite.connect(tmp_path / "empty-version.db")
+    try:
+        await ensure_schema(conn)
+        await conn.execute("DELETE FROM schema_version")
+        await conn.commit()
+
+        with pytest.raises(DatabaseInitializationError, match="exactly one"):
+            await ensure_schema(conn)
+
+        # The failed validation rolled back its transaction; the connection
+        # is still usable by diagnostics or orderly cleanup.
+        cursor = await conn.execute("SELECT 1")
+        assert await cursor.fetchone() == (1,)
+    finally:
+        await conn.close()
+
+
+async def test_duplicate_version_rows_fail(tmp_path: Path) -> None:
+    conn = await aiosqlite.connect(tmp_path / "duplicate-version.db")
+    try:
+        await ensure_schema(conn)
+        await conn.execute(
+            "INSERT INTO schema_version (version) VALUES (?)", (CURRENT_SCHEMA_VERSION,)
+        )
+        await conn.commit()
+
+        with pytest.raises(DatabaseInitializationError, match="exactly one"):
+            await ensure_schema(conn)
+    finally:
+        await conn.close()
+
+
+async def test_mixed_supported_and_unsupported_version_rows_fail(tmp_path: Path) -> None:
+    conn = await aiosqlite.connect(tmp_path / "mixed-version.db")
+    try:
+        await ensure_schema(conn)
+        await conn.execute(
+            "INSERT INTO schema_version (version) VALUES (?)",
+            (CURRENT_SCHEMA_VERSION + 1,),
+        )
+        await conn.commit()
+
+        with pytest.raises(DatabaseInitializationError, match="exactly one"):
+            await ensure_schema(conn)
+    finally:
+        await conn.close()
+
+
+async def test_malformed_non_integer_version_fails(tmp_path: Path) -> None:
+    conn = await aiosqlite.connect(tmp_path / "malformed-version.db")
+    try:
+        await ensure_schema(conn)
+        await conn.execute("UPDATE schema_version SET version = 'not-an-integer'")
+        await conn.commit()
+
+        with pytest.raises(DatabaseInitializationError, match="integer"):
+            await ensure_schema(conn)
+    finally:
+        await conn.close()
+
+
+async def test_current_version_with_missing_required_table_fails(tmp_path: Path) -> None:
+    conn = await aiosqlite.connect(tmp_path / "missing-table.db")
+    try:
+        await ensure_schema(conn)
+        await conn.execute("DROP TABLE quota_binding_samples")
+        await conn.commit()
+
+        with pytest.raises(DatabaseInitializationError, match="missing required table"):
+            await ensure_schema(conn)
+    finally:
+        await conn.close()
+
+
+async def test_current_version_with_missing_required_column_fails(tmp_path: Path) -> None:
+    conn = await aiosqlite.connect(tmp_path / "missing-column.db")
+    try:
+        await ensure_schema(conn)
+        await conn.execute("ALTER TABLE snapshots DROP COLUMN plan_name")
+        await conn.commit()
+
+        with pytest.raises(DatabaseInitializationError, match="missing required column"):
+            await ensure_schema(conn)
+    finally:
+        await conn.close()
+
+
+async def test_nonempty_database_without_version_table_fails(tmp_path: Path) -> None:
+    conn = await aiosqlite.connect(tmp_path / "unversioned.db")
+    try:
+        await conn.execute("CREATE TABLE unrelated (id INTEGER)")
+        await conn.commit()
+
+        with pytest.raises(DatabaseInitializationError, match="schema_version"):
+            await ensure_schema(conn)
+    finally:
+        await conn.close()
+
+
 async def test_older_schema_version_fails_clearly(tmp_path: Path) -> None:
     db_path = tmp_path / "older.db"
 

@@ -78,7 +78,18 @@ async def test_live_capture_save_reload_round_trip(tmp_path: Path) -> None:
     reloaded = await repository.get_snapshot(result.id)
 
     assert reloaded is not None
-    assert reloaded == result.snapshot
+    if result.snapshot.account.account_id is None:
+        assert reloaded.account.account_id is None
+    else:
+        assert reloaded.account.account_id != result.snapshot.account.account_id
+    restored = reloaded.model_copy(
+        update={
+            "account": reloaded.account.model_copy(
+                update={"account_id": result.snapshot.account.account_id}
+            )
+        }
+    )
+    assert restored == result.snapshot
     assert reloaded.captured_at == result.snapshot.captured_at
     pool_ids = {p.id for p in reloaded.quota_pools}
     for binding in reloaded.quota_bindings:

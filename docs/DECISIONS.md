@@ -591,3 +591,67 @@ daily-allocation math, model routing — untouched, per design §25 phase
 ordering and this phase's explicit scope guard. `account/usage/read`
 history data still has no persistence path (it already had no domain
 mapping — see the Phase 2.1 entry above).
+
+---
+
+## 2026-09-18 — Phase 3.1 persistence-boundary stabilization
+
+**Context**: An independent Phase 3 review found five remaining boundary
+problems: raw account identity at rest, ambiguous schema-version state, raw
+SQLite errors escaping public methods, incomplete coherence validation, and
+independent parent/child serialization from shallowly-mutable runtime data.
+
+### Raw account IDs are not persisted
+
+**This supersedes** the Phase 3 `account_key` decision above. A raw
+`AccountInfo.account_id` is no longer written verbatim anywhere in SQLite.
+When present, persistence computes
+`"sha256:" + sha256(provider + "\0" + account_id)`, stores that value in
+`snapshots.account_key`, and replaces the structured ID (and exact duplicate
+values) in the canonical serialized copy. `None` remains `NULL`/`None`.
+
+The provider namespace prevents cross-provider correlation collisions. The
+digest is stable for local account correlation and one-way, but is explicitly
+not a secret. No key management was added because Phase 3 does not require an
+authentication-grade identifier. The caller's in-memory snapshot is not
+mutated; consequently `StoredSnapshot.snapshot` means the captured in-memory
+snapshot, while a repository read returns the privacy-safe persisted form.
+
+### One canonical serialized copy per save
+
+**Decision**: `save_snapshot()` validates the input, performs one defensive
+`model_dump(mode="json", round_trip=True)`, applies the privacy transform,
+re-validates that copied representation as `UsageSnapshot`, and prebuilds all
+JSON before opening the write transaction. Parent columns/JSON and every pool
+and binding column/JSON are generated only from that copy.
+
+**Consequence**: relational rows are query projections, not independent
+truth. A mutation of caller-owned nested metadata after the copy boundary
+cannot produce `snapshot_json=A` and `pool_json=B` in one committed save.
+
+### Schema version state is an integrity check
+
+**Decision**: A valid database has exactly one `schema_version` row containing
+one integer. A truly empty database is initialized atomically inside
+`BEGIN IMMEDIATE`; an existing database is never treated as fresh. Version 1
+must also contain every required table and column. Empty, duplicate, mixed,
+malformed, older/newer, or incomplete states fail with
+`DatabaseInitializationError`.
+
+This remains a minimal version mechanism rather than a migration framework.
+It provides a trustworthy decision point for a future explicit version-2
+upgrade without silently repairing ambiguous state.
+
+### Persistence errors and coherence are enforced at the public boundary
+
+**Decision**: connection/schema failures, serialization failures, write
+failures, and read/reconstruction failures surface respectively as
+`DatabaseInitializationError`, `SnapshotSerializationError`,
+`SnapshotWriteError`, and `SnapshotReadError`, with internal errors chained as
+causes. Already-typed persistence errors are preserved.
+
+Before serialization/transaction mutation, persistence now also rejects
+duplicate pool IDs, duplicate pool references within a binding, capability
+models whose provider differs from the account provider, pool-provider
+mismatches, dangling binding references, and non-aware capture timestamps.
+It never deduplicates or repairs an incoherent snapshot.

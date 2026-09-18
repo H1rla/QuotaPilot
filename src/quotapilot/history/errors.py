@@ -15,13 +15,13 @@ class DatabaseInitializationError(PersistenceError):
     """The database could not be opened or its schema could not be established.
 
     Covers: the database directory/file could not be created or opened, and
-    schema-version mismatches this build cannot handle (a newer schema than
-    this code understands, or an older one with no migration path yet).
+    malformed schema-version state, incomplete current-version schemas, and
+    version mismatches this build cannot handle.
     """
 
 
 class SnapshotSerializationError(PersistenceError):
-    """A `UsageSnapshot` (or its pools/bindings) could not be serialized."""
+    """A snapshot could not cross the canonical serialization boundary."""
 
 
 class SnapshotCoherenceError(PersistenceError):
@@ -45,6 +45,6 @@ class SnapshotWriteError(PersistenceError):
 class SnapshotReadError(PersistenceError):
     """A stored snapshot could not be read back as a valid `UsageSnapshot`.
 
-    Covers malformed stored JSON and JSON that no longer validates against
-    the current domain model.
+    Covers query failures, malformed stored JSON, and JSON that no longer
+    validates against the current domain model.
     """

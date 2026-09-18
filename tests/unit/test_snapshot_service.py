@@ -21,4 +21,13 @@ async def test_capture_and_store_persists_a_coherent_snapshot(tmp_path: Path) ->
     assert result.id > 0
 
     reloaded = await repository.get_snapshot(result.id)
-    assert reloaded == result.snapshot
+    assert reloaded is not None
+    assert reloaded.account.account_id != result.snapshot.account.account_id
+    restored = reloaded.model_copy(
+        update={
+            "account": reloaded.account.model_copy(
+                update={"account_id": result.snapshot.account.account_id}
+            )
+        }
+    )
+    assert restored == result.snapshot

@@ -522,29 +522,44 @@ CREATE TABLE quota_binding_samples (
 );
 ```
 
-`account_key` mirrors `AccountInfo.account_id` verbatim (not a new
-identifier, not re-redacted): that field is already the sanctioned,
-never-redacted structured value inside `UsageSnapshot`, kept local-only in
-SQLite. It is nullable — persistence must never invent an identity a
-provider doesn't supply.
+Raw provider account IDs are never persisted. When `AccountInfo.account_id`
+is present, `account_key` stores a provider-scoped pseudonymous value:
+`"sha256:" + sha256(provider + "\0" + account_id)`. The same value replaces
+the structured account ID in `snapshot_json`; duplicate exact occurrences in
+the canonical serialized copy are replaced too. This digest is stable for
+local correlation but is not a secret. If no account ID exists, both values
+remain `NULL`/`None`.
 
-`snapshot_json`/`pool_json`/`binding_json` come from
-`model_dump(mode="json", round_trip=True)` — a defensive serialized copy,
-never a live reference to a snapshot's (only shallowly immutable)
-`metadata` dicts. Reads always go back through `UsageSnapshot.model_validate`
-— stored JSON is never trusted as inherently valid.
+Every save calls `model_dump(mode="json", round_trip=True)` exactly once to
+create one defensive canonical copy. Account pseudonymization, domain
+re-validation, `snapshot_json`, child JSON, and every normalized column are
+then derived from that copy before the write transaction opens. Runtime
+metadata mutations therefore cannot make the parent and child rows disagree.
+The normalized columns and child rows are query projections, not independent
+sources of truth; `snapshot_json` is the reconstruction source. Reads always
+go back through `UsageSnapshot.model_validate` — stored JSON is never trusted
+as inherently valid.
 
 Saving one snapshot (parent row + all pool rows + all binding rows) is one
 SQLite transaction: all rows commit together or none do. Before writing,
 persistence re-validates snapshot coherence (bindings reference only pools
-in the same snapshot; `captured_at` is timezone-aware; every pool's
-`provider` matches `account.provider`) even though the provider boundary is
+in the same snapshot and contain no duplicate references; pool IDs are
+unique; `captured_at` is timezone-aware; every pool and capability model has
+the same provider as `account.provider`) even though the provider boundary is
 already expected to guarantee it — defense in depth, not trust.
 
-`schema_version` holds one row; `ensure_schema()` initializes a fresh
-database, no-ops on a database already at the current version, and raises
-`DatabaseInitializationError` clearly for any other version (no migration
-framework — add a version-specific branch when version 2 is needed).
+`schema_version` must hold exactly one integer row. `ensure_schema()` uses an
+explicit `BEGIN IMMEDIATE`: a truly empty database gets the complete version-1
+schema atomically, while any existing database must have the one supported
+version and all required tables/columns. Missing, duplicate, malformed,
+older, newer, or structurally incomplete version state raises
+`DatabaseInitializationError` (no migration framework — add a
+version-specific branch when version 2 is needed).
+
+Public repository failures use the persistence taxonomy:
+`DatabaseInitializationError`, `SnapshotSerializationError`,
+`SnapshotWriteError`, and `SnapshotReadError`. SQLite exceptions are retained
+only as chained causes, not exposed as the public error contract.
 
 Do not over-design migrations beyond this. Introduce a heavier migration
 mechanism only once schema evolution actually begins.

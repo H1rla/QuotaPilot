@@ -17,13 +17,13 @@ class SnapshotRepository(Protocol):
 
     Implementations must treat `UsageSnapshot` as the maximum information
     boundary allowed into persistence: they must never reach back into raw
-    provider/transport responses, and must reject (not repair) a snapshot
-    whose `quota_bindings` reference a pool not present in the same
-    snapshot's `quota_pools`.
+    provider/transport responses, must pseudonymize any structured raw account
+    identifier without mutating the caller's object, and must reject (not
+    repair) incoherent provider/pool/binding identity.
     """
 
     async def save_snapshot(self, snapshot: UsageSnapshot) -> int:
-        """Persist `snapshot` atomically and return its assigned id."""
+        """Persist one privacy-safe canonical copy atomically; return its id."""
         ...
 
     async def get_snapshot(self, snapshot_id: int) -> UsageSnapshot | None:

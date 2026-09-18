@@ -21,8 +21,11 @@ from quotapilot.providers.base import UsageProvider
 
 @dataclass(frozen=True, slots=True)
 class StoredSnapshot:
-    """The result of a successful capture-and-store: the assigned id plus
-    the exact snapshot that was persisted."""
+    """The assigned id plus the captured in-memory snapshot.
+
+    Persistence may replace structured account identity with a pseudonymous
+    local correlation key without mutating this object.
+    """
 
     id: int
     snapshot: UsageSnapshot
