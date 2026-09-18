@@ -7,78 +7,84 @@
 
 - Date: 2026-09-18
 - Last agent: Codex
-- Current phase: **Phase 6 controlled execution complete**
+- Current phase: **Phase 7 productization complete**
 - Phase 2 provider boundary: **COMPLETE**
 - Phase 3/3.1 persistence boundary: **COMPLETE**
 - Phase 4/4.1 budget boundary: **COMPLETE**
 - Phase 5 routing boundary: **COMPLETE**
 - Phase 5.5 enrichment/calibration boundary: **COMPLETE**
 - Phase 6 controlled execution boundary: **COMPLETE**
-- Phase 7 implementation: **NOT STARTED**
-- Phase 7 readiness: **READY**, subject to the limitations below
+- Phase 7 productization/release-readiness boundary: **COMPLETE**
+- Release readiness: **READY**
+- Publishing/tag/GitHub release: **NOT PERFORMED**
 
-The normative and implemented Phase 6 contract is
-`docs/PHASE6_EXECUTION_CONTRACT.md`.
+The implemented Phase 7 contract is
+`docs/PHASE7_PRODUCTIZATION_CONTRACT.md`. The reusable pre-publication gate is
+`docs/RELEASE_CHECKLIST.md`.
 
-## Phase 6 implementation
+## Phase 7 implementation
 
-### Execution boundary
+### Strict central configuration
 
-- `src/quotapilot/execution/` contains strict `ExecutionPlan`,
-  `ExecutionResult`, `ExecutionPolicy`, status/failure enums, pure planning and
-  risk-based authorization, bounded retry/escalation, output redaction, and a
-  provider-neutral adapter protocol.
-- A `RoutingRecommendation` remains advisory. The default real-execution mode
-  is `always_confirm`; dry-run never requires approval and never invokes the
-  provider or external agent. `never_execute`, `confirm_on_escalation`, and
-  `auto_for_low_risk` are explicit strict-policy alternatives.
-- Plans contain a random execution ID, provider/model/effort, attempt bounds,
-  explicit working directory, timeout, quota context, recommendation digest,
-  task class/hash, and the advisory escalation path. Raw task/profile summary
-  remain in memory and are excluded from serialized plan JSON.
-- No execution audit storage was introduced. Raw tasks, transcripts,
-  environment variables, provider responses, and account identity are not
-  persisted by Phase 6.
+- `src/quotapilot/config/` loads optional safe YAML from the platformdirs user
+  config path and validates one strict `AppConfig` (`extra="forbid"`).
+- Existing `BudgetConfig`, `RoutingPolicy`, and `ExecutionPolicy` are embedded;
+  no duplicate policy schema was introduced.
+- Precedence is CLI > selected `QUOTAPILOT_*` environment variables > user
+  config > policy defaults > built-ins. String/enum conversion happens
+  explicitly at the loader boundary before strict validation.
+- `quotapilot config show [--json]` reports effective field sources;
+  `config validate [--json]` performs no provider or execution access.
+- Budget, route, models, snapshot, and execute commands now consume central
+  database/provider/profile/policy settings while preserving their CLI
+  overrides.
 
-### Revalidation and state machine
+### Status and Waybar
 
-- `ExecutionService` uses the existing route stack. Every real attempt occurs
-  only after approval (when required), then a fresh coherent
-  `provider.capture_usage()`, budget recomputation, exact capability
-  enrichment, and route re-evaluation with the original audited task profile.
-- Known/unknown pressure transitions, pressure change greater than the policy
-  threshold, or changed binding pool stop as `quota_changed`. Removed or
-  non-selectable models, unsupported efforts, newly stale/unroutable profile
-  data, changed escalation steps, or changed initial recommendation stop as
-  `capability_changed`; no silent substitution occurs.
-- Retry preserves model/effort and defaults to one transport retry. Escalation
-  consumes only the Phase 5 escalation path, requires renewed approval for the
-  changed plan, and rechecks quota/capability first. Maximum attempts default
-  to three. Authentication, quota, environment, cancellation, and timeout do
-  not retry/escalate by default; cancellation never escalates.
+- `StatusService` composes repository snapshots, the existing Budget Engine,
+  and capability enrichment into strict privacy-safe status models. It does
+  not expose account IDs, plan labels, raw observations, or raw capability
+  metadata.
+- `quotapilot status [--json]` defaults to persisted state. `--refresh`
+  performs one explicit coherent Codex capture/store; on failure it retains and
+  labels a `persisted_fallback` rather than presenting cached data as live.
+- `quotapilot waybar` is persisted-only and produced in about 0.30 seconds in
+  a clean no-snapshot smoke. Stable classes are `very-under`, `under`,
+  `on-track`, `over`, `critical`, `unknown`, `stale`, and `error`.
+- Waybar never contacts the provider or execution adapter, and every failure
+  path returns one generic valid JSON object with exit code 0.
 
-### Codex CLI adapter
+### Doctor and output UX
 
-- Installed `codex-cli 0.155.0` was inspected directly. The adapter uses
-  `codex --ask-for-approval never exec --ephemeral --model … --config
-  model_reasoning_effort=… --sandbox workspace-write --cd … --color never -`.
-- `--ask-for-approval` is a global option and must precede `exec`; task text is
-  sent through stdin. `asyncio.create_subprocess_exec` is used—there is no
-  shell string, `shell=True`, or task interpolation.
-- The process has an explicit cwd and timeout. stdout/stderr are drained
-  concurrently into separately bounded tails, then credential patterns are
-  redacted. Timeout, cancellation, and broken pipes terminate/reap the child.
+- `quotapilot doctor [--json]` returns PASS/WARN/FAIL/SKIP checks for runtime,
+  strict config, database/schema, Codex executable/version/auth/app-server,
+  model profiles/freshness, routable models, provider capture, Waybar, and the
+  execution adapter.
+- Default doctor does not capture provider data; `--live` is explicit.
+  Authentication command output is discarded, and raw exceptions/environment
+  values are never reflected in diagnostics.
+- Root `--version` reads installed package metadata (`0.1.0`), while the
+  existing `version` command remains compatible. `--debug` enables standard
+  stderr logging; application JSON remains plain JSON without ANSI markup.
+- No execution-history command was added because Phase 6 persists no audit.
 
-### CLI
+### Packaging and repository readiness
 
-- `quotapilot execute TASK --dry-run` renders classification, model/effort,
-  quota/binding context, adapter, cwd, approval, timeout, attempt bound, and
-  escalation path without live capture or execution.
-- `quotapilot execute TASK --dry-run --json` emits a safe `ExecutionPlan`
-  projection without raw task/account/provider metadata.
-- `quotapilot execute TASK` defaults to an interactive confirmation. A changed
-  escalation plan is displayed and confirmed separately. No `--yes` bypass
-  was introduced.
+- `uv build` creates a wheel and sdist. The wheel contains the bundled exact-ID
+  model profiles, calibration scenarios, package metadata, and MIT license; it
+  contains no fixtures, DB, config, caches, venv, or Git data.
+- A clean temporary venv installed the wheel and passed `--version`, `--help`,
+  config validation, bundled profile loading, and calibration replay.
+- An isolated `uv tool install` of the wheel also passed `quotapilot --version`.
+- CI now runs pytest, Ruff, Pyright, CLI/calibration smoke, build, isolated
+  wheel installation, and installed-resource smoke. It sets neither live
+  integration gate nor execution integration gate.
+- README is user-facing and documents verified wheel installation, quick
+  start, strict config/environment overrides, data locations, Waybar, safety,
+  privacy, compatibility, and architecture.
+- `CHANGELOG.md`, `LICENSE`, `SECURITY.md`, `CONTRIBUTING.md`, and the release
+  checklist are present. No third-party copied/adapted source requiring a
+  NOTICE was found; dependencies are not vendored.
 
 ## Verification
 
@@ -88,62 +94,59 @@ Commands run from the repository root:
 uv run pytest
 uv run ruff check .
 uv run pyright
+uv build
+uv run quotapilot --version
 uv run quotapilot --help
+uv run quotapilot status --help
+uv run quotapilot doctor --help
+uv run quotapilot waybar --help
+uv run quotapilot config --help
+uv run quotapilot models --help
 uv run quotapilot execute --help
 QUOTAPILOT_INTEGRATION=1 uv run pytest tests/integration/
 ```
 
 Results:
 
-- Offline/default pytest: **392 passed, 5 skipped**. The five skips are the
-  explicitly gated authenticated live tests.
-- Phase 6-focused tests: **45 passed**. They cover strict planning/policy,
-  dry-run privacy, confirmation, live revalidation, stale profiles, material
-  quota change, bounded retry/escalation, max attempts, removed models,
-  unsupported efforts, auth/quota/timeout/cancel behavior, structured
-  subprocess invocation, bounded/redacted output, timeout, cancellation,
-  broken pipes, and process cleanup.
-- Normal authenticated integration: **5 passed**. It remains capture/profile/
-  budget/route-only and does not import or invoke the execution adapter.
-- Real execution integration: **NOT RUN**. No paid/real execution test is
-  enabled; any future one must require `QUOTAPILOT_EXECUTION_INTEGRATION=1` in
-  addition to its own safe temporary-repository fixture.
+- Offline/default pytest: **423 passed, 5 skipped**. The skips are the five
+  explicitly gated authenticated tests.
+- Normal authenticated integration: **5 passed**. It captured quota/models and
+  exercised persistence/budget/enrichment/routing only; no model execution.
 - Ruff: **All checks passed**.
 - Pyright: **0 errors, 0 warnings, 0 informations**.
-- Root and execute CLI help: **PASS**.
-
-Normal CI remains offline, credential-free, and incapable of real model use.
+- Build: **wheel and sdist succeeded**.
+- Clean-wheel and isolated `uv tool` smoke: **PASS**.
+- Calibration: **10/10 acceptable hits**, zero recorded violations.
+- Real execution integration: **NOT RUN** and not required for Phase 7.
 
 ## Security/privacy review
 
-- No `create_subprocess_shell`, `shell=True`, arbitrary command extraction,
-  unbounded output buffering, unbounded retry, or recursive delegation exists.
-- Output retention is bounded before decoding/redaction. Plans/results never
-  serialize the inherited environment or raw provider response.
-- No credential, token, cookie, raw account ID, live telemetry, private task,
-  full transcript, cache, or generated artifact was added.
-- Existing snapshot pseudonymization and profile safe-YAML boundaries remain
-  unchanged.
+- Safe YAML loaders remain in use; strict config rejects unknown keys and
+  coercible policy values. No arbitrary environment-to-command setting exists.
+- Provider/execution subprocesses use argument vectors, never shell task
+  interpolation. Phase 7 added no execution subprocess path.
+- Fake token/API-key/authorization/account values do not appear in doctor
+  output. Status and Waybar regression tests exclude account identity, plan,
+  and raw observations while preserving `null`, zero, UNKNOWN, and stale.
+- Repository/distribution scans found no credential, real account identity,
+  private usage telemetry, raw task, local DB, cache, or virtualenv artifact.
+- Normal CI and default pytest cannot execute a paid/real model.
 
-## Remaining risks / deferred decisions
+## Remaining limitations
 
-- Current Codex CLI syntax was verified for 0.155.0 and must be revalidated
-  when the installed CLI changes; there is not yet a machine-readable CLI
-  compatibility negotiation layer.
-- Non-zero Codex failures use conservative stable marker classification for
-  authentication/quota; other non-zero exits are `agent_error`. Richer
-  machine-readable CLI failure envelopes are not currently available.
-- Phase 6 does not run a post-execution semantic evaluator or project test
-  command. Explicit verification commands remain optional future work under a
-  separate command-security design.
-- Capability scores and routing calibration remain provisional Phase 5.5
-  policy. Execution does not alter or auto-calibrate them.
-- No execution audit is persisted; only the in-memory result explains a run.
-- Long-lived versus ephemeral Codex app-server capture remains deferred.
+- Linux/Python 3.12 is the verified platform; macOS/Windows are not claimed.
+- OpenAI Codex is the only live provider and execution adapter.
+- Capability scores remain provisional policy, not empirical guarantees.
+- Waybar intentionally reflects the latest persisted snapshot; users must run
+  capture/status refresh separately to update it.
+- Doctor's non-live auth check depends on the installed Codex CLI's stable
+  `login status` behavior; it discards all command output.
+- Execution audit persistence, background refresh/daemon, TUI, notifications,
+  migration version 2, and publishing remain unimplemented by design.
 
 ## Next task
 
-Phase 7 may add the separately contracted observability/user-integration work.
-It must preserve the recommendation/authorization split, the independent real
-execution integration gate, bounded subprocess behavior, and no raw task or
-transcript persistence by default.
+Use an observation/calibration period to compare advisory recommendations with
+real outcomes without widening the Phase 6 authorization boundary. A release
+tag, GitHub release, or package publication requires separate explicit user
+authorization.

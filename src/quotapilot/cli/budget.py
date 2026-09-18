@@ -5,12 +5,16 @@ from __future__ import annotations
 import asyncio
 import json
 from datetime import UTC, datetime
+from pathlib import Path
+from typing import Annotated
 
 import typer
-from pydantic import ValidationError
 
 from quotapilot.budget.engine import BudgetEngine
-from quotapilot.budget.models import BudgetConfig, BudgetReport, PoolBudgetAssessment
+from quotapilot.budget.errors import BudgetError
+from quotapilot.budget.models import BudgetReport, PoolBudgetAssessment
+from quotapilot.config import ConfigError, load_effective_config
+from quotapilot.history.errors import PersistenceError
 from quotapilot.history.sqlite import SqliteSnapshotRepository
 from quotapilot.services.budget import BudgetService
 
@@ -78,26 +82,54 @@ def render_budget_report(report: BudgetReport) -> str:
 def budget(
     json_output: bool = typer.Option(False, "--json", help="Emit the BudgetReport as JSON."),
     provider: str | None = typer.Option(None, help="Filter the latest snapshot by provider."),
-    reserve_fraction: float = typer.Option(0.10, help="Quota fraction reserved from use."),
-    timezone: str = typer.Option("UTC", help="IANA timezone for calendar-day allocation."),
-    stale_after_seconds: int = typer.Option(900, help="Age after which a snapshot is stale."),
+    reserve_fraction: float | None = typer.Option(
+        None, help="Override the configured quota reserve fraction."
+    ),
+    timezone: str | None = typer.Option(
+        None, help="Override the configured IANA calendar timezone."
+    ),
+    stale_after_seconds: int | None = typer.Option(
+        None, help="Override the configured snapshot stale threshold."
+    ),
+    config_path: Annotated[
+        Path | None,
+        typer.Option("--config", help="Use this config file instead of the platform default."),
+    ] = None,
 ) -> None:
     """Evaluate the latest persisted snapshot without fetching provider data."""
 
     try:
-        config = BudgetConfig(
-            reserve_fraction=reserve_fraction,
-            timezone=timezone,
-            stale_after_seconds=stale_after_seconds,
+        effective = load_effective_config(
+            path=config_path,
+            cli_overrides={
+                "provider.default": provider,
+                "budget.reserve_fraction": reserve_fraction,
+                "budget.timezone": timezone,
+                "budget.stale_after_seconds": stale_after_seconds,
+            },
         )
-    except ValidationError as exc:
-        typer.echo(f"invalid budget configuration: {exc.errors()[0]['msg']}", err=True)
+    except ConfigError as exc:
+        typer.echo(f"invalid budget configuration: {exc}", err=True)
         raise typer.Exit(code=2) from exc
 
     async def run() -> None:
-        repository = SqliteSnapshotRepository()
-        service = BudgetService(repository, BudgetEngine(config))
-        report = await service.get_latest_report(now=datetime.now(UTC), provider=provider)
+        try:
+            repository = SqliteSnapshotRepository(effective.config.database.path)
+            service = BudgetService(repository, BudgetEngine(effective.config.budget))
+            report = await service.get_latest_report(
+                now=datetime.now(UTC), provider=effective.config.provider.default
+            )
+        except (BudgetError, PersistenceError) as exc:
+            if json_output:
+                typer.echo(
+                    json.dumps(
+                        {"error": "budget_unavailable", "message": str(exc)},
+                        sort_keys=True,
+                    )
+                )
+            else:
+                typer.echo(str(exc), err=True)
+            raise typer.Exit(code=1) from exc
         if report is None:
             if json_output:
                 typer.echo(json.dumps({"error": "no_snapshot"}, sort_keys=True))

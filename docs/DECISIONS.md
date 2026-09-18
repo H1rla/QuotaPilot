@@ -886,3 +886,62 @@ profile summary, retaining only task class and a provider-independent SHA-256
 correlation digest (which is not claimed to protect low-entropy inputs).
 Execution results retain bounded, credential-redacted output summaries and do
 not serialize the environment or provider response.
+
+---
+
+## 2026-09-18 — Phase 7: strict product configuration and persisted-first observability
+
+### Configuration composes existing policy models
+
+**Decision**: `AppConfig` embeds the existing strict `BudgetConfig`,
+`RoutingPolicy`, and `ExecutionPolicy` rather than restating their fields.
+Configuration is optional YAML at the `platformdirs` user config path. The
+loader applies defaults, then user YAML, a finite documented set of
+`QUOTAPILOT_*` variables, and explicit CLI overrides. It converts human YAML or
+environment enum/scalar representations explicitly at that boundary and then
+validates the strict models with `extra="forbid"`.
+
+**Consequence**: typos cannot silently revert a safety/budget policy to its
+default, arbitrary environment variables are neither configuration nor
+diagnostic output, and `config show` can report a source for every effective
+leaf. The configuration system adds no arbitrary command/hook setting.
+
+### Status is a privacy-safe service result, not CLI budget logic
+
+**Decision**: `StatusService` is the only composition point for product status.
+It derives quota state from `BudgetEngine` and model/profile health from
+`CapabilityEnricher`; CLI and Waybar only render `StatusReport`. The report
+contains provider, capture time/source, normalized budget fields, aggregate
+profile health, and warnings. It excludes account ID, plan name, raw provider
+observations, and capability metadata dictionaries.
+
+Status defaults to the latest persisted snapshot. `status --refresh` is an
+explicit live action that atomically captures and stores before rendering; if
+that fails, an existing persisted snapshot is retained and labeled
+`persisted_fallback`. Waybar is always persisted-only so periodic polling
+cannot cause provider traffic or paid execution. Stale overrides its CSS class,
+UNKNOWN remains `unknown`, and every Waybar failure returns valid generic JSON
+without reflecting exception text.
+
+### Doctor is offline by default and bounded in disclosure
+
+**Decision**: Doctor uses structured PASS/WARN/FAIL/SKIP results. It validates
+local config/database/profiles and checks the public Codex CLI surface by fixed
+argument vectors. Authentication output is discarded. Authenticated capture is
+performed only with `doctor --live`, reports only aggregate success/failure,
+and is never persisted by the diagnostic. Environment contents and raw
+exceptions are not displayed.
+
+### Packaging and release readiness
+
+**Decision**: `pyproject.toml` version `0.1.0` is the single version source;
+`quotapilot.__version__` reads installed metadata. Wheels force-include bundled
+model profiles and calibration scenarios under `quotapilot/_data`, which keeps
+runtime lookup independent of the repository working directory. Normal CI now
+runs tests, Ruff, Pyright, build, an isolated wheel install, CLI smoke, and
+resource loading. Tagging and publication remain separate explicit actions.
+
+The MIT declaration already present in package metadata is now accompanied by
+the full license text. Repository review found no copied or substantially
+adapted third-party implementation requiring a NOTICE; dependencies remain
+separately licensed and are not vendored.

@@ -7,11 +7,16 @@ plain read-back of what's already persisted.
 from __future__ import annotations
 
 import asyncio
+from pathlib import Path
+from typing import Annotated
 
 import typer
 
+from quotapilot.config import ConfigError, load_effective_config
 from quotapilot.domain.usage import UsageSnapshot
+from quotapilot.history.errors import PersistenceError
 from quotapilot.history.sqlite import SqliteSnapshotRepository
+from quotapilot.providers.openai_codex.errors import CodexProviderError
 from quotapilot.providers.openai_codex.provider import OpenAICodexProvider
 from quotapilot.services.snapshot import SnapshotService
 
@@ -33,14 +38,31 @@ def _render(snapshot: UsageSnapshot) -> str:
 
 
 @app.command("capture")
-def capture() -> None:
+def capture(
+    config_path: Annotated[
+        Path | None,
+        typer.Option("--config", help="Use this config file instead of the platform default."),
+    ] = None,
+) -> None:
     """Capture a fresh snapshot from the OpenAI Codex provider and persist it."""
 
     async def run() -> None:
-        provider = OpenAICodexProvider()
-        repository = SqliteSnapshotRepository()
-        service = SnapshotService(provider, repository)
-        result = await service.capture_and_store()
+        try:
+            effective = load_effective_config(path=config_path)
+            if effective.config.provider.default not in {None, "openai-codex"}:
+                raise ConfigError(
+                    "snapshot capture currently supports only provider 'openai-codex'"
+                )
+            provider = OpenAICodexProvider()
+            repository = SqliteSnapshotRepository(effective.config.database.path)
+            service = SnapshotService(provider, repository)
+            result = await service.capture_and_store()
+        except ConfigError as exc:
+            typer.echo(str(exc), err=True)
+            raise typer.Exit(code=2) from exc
+        except (CodexProviderError, PersistenceError) as exc:
+            typer.echo(str(exc), err=True)
+            raise typer.Exit(code=1) from exc
         typer.echo(f"saved snapshot id={result.id}")
         typer.echo(_render(result.snapshot))
 
@@ -48,12 +70,28 @@ def capture() -> None:
 
 
 @app.command("latest")
-def latest() -> None:
+def latest(
+    config_path: Annotated[
+        Path | None,
+        typer.Option("--config", help="Use this config file instead of the platform default."),
+    ] = None,
+) -> None:
     """Show the most recently persisted snapshot, if any."""
 
     async def run() -> None:
-        repository = SqliteSnapshotRepository()
-        snapshot = await repository.get_latest_snapshot()
+        try:
+            effective = load_effective_config(path=config_path)
+        except ConfigError as exc:
+            typer.echo(str(exc), err=True)
+            raise typer.Exit(code=2) from exc
+        repository = SqliteSnapshotRepository(effective.config.database.path)
+        try:
+            snapshot = await repository.get_latest_snapshot(
+                provider=effective.config.provider.default
+            )
+        except PersistenceError as exc:
+            typer.echo(str(exc), err=True)
+            raise typer.Exit(code=1) from exc
         if snapshot is None:
             typer.echo("no snapshots stored yet")
             raise typer.Exit(code=1)

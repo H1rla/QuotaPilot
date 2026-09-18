@@ -14,6 +14,7 @@ from quotapilot.capabilities.enrichment import CapabilityEnricher, capability_vi
 from quotapilot.capabilities.errors import CapabilityProfileError
 from quotapilot.capabilities.loader import default_profile_directory
 from quotapilot.capabilities.registry import ModelProfileRegistry
+from quotapilot.config import ConfigError, load_effective_config
 from quotapilot.history.errors import PersistenceError
 from quotapilot.history.sqlite import SqliteSnapshotRepository
 
@@ -39,6 +40,10 @@ def models(
         "--as-of",
         help="Profile evaluation date in YYYY-MM-DD form (defaults to UTC today).",
     ),
+    config_path: Annotated[
+        Path | None,
+        typer.Option("--config", help="Use this config file instead of the platform default."),
+    ] = None,
 ) -> None:
     """Inspect enriched model metadata without fetching or exposing account data."""
     try:
@@ -49,11 +54,25 @@ def models(
 
     async def run() -> None:
         try:
-            registry = ModelProfileRegistry.from_directory(
-                profile_dir or default_profile_directory()
+            effective = load_effective_config(
+                path=config_path,
+                cli_overrides={
+                    "provider.default": provider,
+                    "profiles.directory": str(profile_dir) if profile_dir else None,
+                },
             )
-            repository = SqliteSnapshotRepository()
-            snapshot = await repository.get_latest_snapshot(provider=provider)
+            selected_profile_dir = (
+                Path(effective.config.profiles.directory).expanduser()
+                if effective.config.profiles.directory
+                else default_profile_directory()
+            )
+            registry = ModelProfileRegistry.from_directory(
+                selected_profile_dir
+            )
+            repository = SqliteSnapshotRepository(effective.config.database.path)
+            snapshot = await repository.get_latest_snapshot(
+                provider=effective.config.provider.default
+            )
             if snapshot is None:
                 if json_output:
                     typer.echo(json.dumps({"error": "no_snapshot"}, sort_keys=True))
@@ -66,6 +85,17 @@ def models(
                 evaluated_on=evaluated_on,
             )
             views = capability_views(enriched)
+        except ConfigError as exc:
+            if json_output:
+                typer.echo(
+                    json.dumps(
+                        {"error": "invalid_config", "message": str(exc)},
+                        sort_keys=True,
+                    )
+                )
+            else:
+                typer.echo(str(exc), err=True)
+            raise typer.Exit(code=2) from exc
         except (CapabilityProfileError, PersistenceError) as exc:
             if json_output:
                 typer.echo(

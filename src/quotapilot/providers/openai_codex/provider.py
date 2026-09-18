@@ -31,6 +31,7 @@ from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from typing import Any
 
+from quotapilot import __version__
 from quotapilot.domain.account import AccountInfo
 from quotapilot.domain.model import AIModel
 from quotapilot.domain.quota import QuotaBinding, QuotaPool
@@ -57,7 +58,7 @@ from .parser import (
 )
 from .rpc import OMITTED, AppServerClient, AppServerRpcError, AppServerTransportError, OmittedType
 
-_CLIENT_INFO = {"name": "quotapilot", "version": "0.1.0"}
+_CLIENT_INFO = {"name": "quotapilot", "version": __version__}
 _RPC_TIMEOUT_SECONDS = 15
 _START_TIMEOUT_SECONDS = 10
 _MAX_MODEL_LIST_PAGES = 50

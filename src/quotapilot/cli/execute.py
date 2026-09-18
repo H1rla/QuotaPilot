@@ -15,6 +15,7 @@ from quotapilot.capabilities.enrichment import CapabilityEnricher
 from quotapilot.capabilities.errors import CapabilityProfileError
 from quotapilot.capabilities.loader import default_profile_directory
 from quotapilot.capabilities.registry import ModelProfileRegistry
+from quotapilot.config import ConfigError, load_effective_config
 from quotapilot.execution.adapters.codex_cli import CodexCliExecutionAdapter
 from quotapilot.execution.errors import ExecutionError
 from quotapilot.execution.models import (
@@ -111,27 +112,31 @@ def execute(
         ),
     ] = Path("."),
     approval_mode: Annotated[
-        ExecutionMode,
+        ExecutionMode | None,
         typer.Option(
             "--approval-mode",
             help="Execution authorization policy; real execution defaults to confirmation.",
         ),
-    ] = ExecutionMode.ALWAYS_CONFIRM,
+    ] = None,
     max_attempts: Annotated[
-        int, typer.Option("--max-attempts", min=1, max=10)
-    ] = 3,
+        int | None, typer.Option("--max-attempts", min=1, max=10)
+    ] = None,
     max_same_step_retries: Annotated[
-        int, typer.Option("--max-same-step-retries", min=0, max=5)
-    ] = 1,
+        int | None, typer.Option("--max-same-step-retries", min=0, max=5)
+    ] = None,
     timeout_seconds: Annotated[
-        int, typer.Option("--timeout-seconds", min=1, max=86_400)
-    ] = 900,
+        int | None, typer.Option("--timeout-seconds", min=1, max=86_400)
+    ] = None,
     profile_dir: Annotated[
         Path | None,
         typer.Option(
             "--profile-dir",
             help="Directory containing versioned model-profile YAML files.",
         ),
+    ] = None,
+    config_path: Annotated[
+        Path | None,
+        typer.Option("--config", help="Use this config file instead of the platform default."),
     ] = None,
 ) -> None:
     """Plan safely, then execute only when policy and explicit approval permit it."""
@@ -140,26 +145,40 @@ def execute(
         raise typer.Exit(code=2)
 
     try:
-        policy = ExecutionPolicy(
-            mode=approval_mode,
-            max_attempts=max_attempts,
-            max_same_step_retries=max_same_step_retries,
-            timeout_seconds=timeout_seconds,
+        effective = load_effective_config(
+            path=config_path,
+            cli_overrides={
+                "execution.mode": approval_mode,
+                "execution.max_attempts": max_attempts,
+                "execution.max_same_step_retries": max_same_step_retries,
+                "execution.timeout_seconds": timeout_seconds,
+                "profiles.directory": str(profile_dir) if profile_dir else None,
+            },
         )
-    except ValidationError as exc:
-        typer.echo(f"invalid execution policy: {exc.errors()[0]['msg']}", err=True)
+        if effective.config.provider.default not in {None, "openai-codex"}:
+            raise ConfigError(
+                "controlled execution currently supports only provider 'openai-codex'"
+            )
+        policy: ExecutionPolicy = effective.config.execution
+    except ConfigError as exc:
+        typer.echo(f"invalid execution policy: {exc}", err=True)
         raise typer.Exit(code=2) from exc
 
     async def run() -> None:
         try:
-            repository = SqliteSnapshotRepository()
+            selected_profile_dir = (
+                Path(effective.config.profiles.directory).expanduser()
+                if effective.config.profiles.directory
+                else default_profile_directory()
+            )
+            repository = SqliteSnapshotRepository(effective.config.database.path)
             registry = ModelProfileRegistry.from_directory(
-                profile_dir or default_profile_directory()
+                selected_profile_dir
             )
             routing = RoutingService(
                 repository,
-                BudgetEngine(),
-                RoutingEngine(),
+                BudgetEngine(effective.config.budget),
+                RoutingEngine(effective.config.routing),
                 TaskProfiler(),
                 CapabilityEnricher(),
                 registry,

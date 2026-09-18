@@ -16,6 +16,7 @@ from quotapilot.capabilities.enrichment import CapabilityEnricher
 from quotapilot.capabilities.errors import CapabilityProfileError
 from quotapilot.capabilities.loader import default_profile_directory
 from quotapilot.capabilities.registry import ModelProfileRegistry
+from quotapilot.config import ConfigError, load_effective_config
 from quotapilot.history.errors import PersistenceError
 from quotapilot.history.sqlite import SqliteSnapshotRepository
 from quotapilot.routing.engine import RoutingEngine
@@ -104,6 +105,10 @@ def route(
             help="Directory containing versioned model-profile YAML files.",
         ),
     ] = None,
+    config_path: Annotated[
+        Path | None,
+        typer.Option("--config", help="Use this config file instead of the platform default."),
+    ] = None,
 ) -> None:
     """Recommend a model and effort without executing the task."""
 
@@ -122,15 +127,27 @@ def route(
         raise typer.Exit(code=2) from exc
 
     async def run() -> None:
-        repository = SqliteSnapshotRepository()
         try:
+            effective = load_effective_config(
+                path=config_path,
+                cli_overrides={
+                    "provider.default": provider,
+                    "profiles.directory": str(profile_dir) if profile_dir else None,
+                },
+            )
+            selected_profile_dir = (
+                Path(effective.config.profiles.directory).expanduser()
+                if effective.config.profiles.directory
+                else default_profile_directory()
+            )
+            repository = SqliteSnapshotRepository(effective.config.database.path)
             registry = ModelProfileRegistry.from_directory(
-                profile_dir or default_profile_directory()
+                selected_profile_dir
             )
             service = RoutingService(
                 repository,
-                BudgetEngine(),
-                RoutingEngine(),
+                BudgetEngine(effective.config.budget),
+                RoutingEngine(effective.config.routing),
                 TaskProfiler(),
                 CapabilityEnricher(),
                 registry,
@@ -139,7 +156,7 @@ def route(
                 task,
                 now=datetime.now(UTC),
                 overrides=overrides,
-                provider=provider,
+                provider=effective.config.provider.default,
             )
         except ValidationError as exc:
             message = f"invalid task profile: {exc.errors()[0]['msg']}"
@@ -152,6 +169,17 @@ def route(
                 )
             else:
                 typer.echo(message, err=True)
+            raise typer.Exit(code=2) from exc
+        except ConfigError as exc:
+            if json_output:
+                typer.echo(
+                    json.dumps(
+                        {"error": "invalid_config", "message": str(exc)},
+                        sort_keys=True,
+                    )
+                )
+            else:
+                typer.echo(str(exc), err=True)
             raise typer.Exit(code=2) from exc
         except (CapabilityProfileError, RoutingError, PersistenceError) as exc:
             if json_output:

@@ -1378,9 +1378,35 @@ The previously sketched `status`, `doctor`, and `history` dashboard commands
 remain outside this phase; their absence does not alter the execution safety
 boundary.
 
-### Phase 7 — desktop integration
+### Phase 7 — Productization, Observability & Release Readiness
 
-Implement `quotapilot waybar`.
+Implemented. `src/quotapilot/config/` provides strict optional YAML
+configuration at the platform-resolved user config directory. Existing
+`BudgetConfig`, `RoutingPolicy`, and `ExecutionPolicy` remain the authoritative
+policy schemas. Effective precedence is CLI, selected `QUOTAPILOT_*`
+environment overrides, user config, policy defaults, then built-in defaults;
+`quotapilot config show` exposes the winning source without enumerating the
+environment.
+
+`StatusService` composes the latest coherent snapshot, the Phase 4 Budget
+Engine, and Phase 5.5 capability enrichment into a privacy-safe `StatusReport`.
+`quotapilot status` defaults to persisted state and can explicitly request one
+live refresh; a failed refresh preserves and labels the persisted fallback.
+`quotapilot waybar` is deliberately persisted-only, emits one valid JSON object
+for success or failure, and never captures live state or executes a model.
+
+`quotapilot doctor` emits structured PASS/WARN/FAIL/SKIP checks for strict
+config, database/schema access, Codex availability/version/auth/app-server,
+profiles/freshness/routability, optional explicit provider capture, Waybar, and
+the execution adapter. It discards authentication command output and never
+enumerates environment secrets. No execution-history command was added because
+Phase 6 intentionally persists no execution audit.
+
+Version `0.1.0` comes from package metadata. Wheel/sdist builds bundle exact
+model profiles and calibration scenarios, and CI verifies pytest, Ruff,
+Pyright, build, installed CLI entry points, and installed package resources.
+See `docs/PHASE7_PRODUCTIZATION_CONTRACT.md` and
+`docs/RELEASE_CHECKLIST.md`.
 
 ### Phase 8 — observation period
 
@@ -1392,7 +1418,7 @@ Run recommendation-only mode and record:
 - escalation
 - subjective adequacy
 
-Do not automate model execution yet.
+Do not expand the existing policy-gated execution boundary during observation.
 
 ---
 

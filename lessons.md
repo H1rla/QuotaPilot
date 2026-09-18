@@ -82,3 +82,13 @@ deadlock unless stdout and stderr are consumed concurrently.
 **Rule going forward**: Drain both streams concurrently into fixed-size tails,
 redact retained summaries, enforce a timeout, and terminate/reap the process on
 timeout, cancellation, or transport failure.
+
+## 2026-09-18 — Strict policy models need an explicit human-config boundary
+**What happened**: Existing strict policy models correctly rejected YAML enum
+strings, while a leaf-only merge could accidentally discard an unknown empty
+mapping before `extra="forbid"` saw it.
+**Why**: Human-readable YAML representations and partial nested configuration
+are not identical to already-normalized in-process policy values.
+**Rule going forward**: Parse only documented string/enum forms explicitly in
+the config loader, preserve unknown and empty mappings through the merge, then
+run the authoritative strict models once after precedence is resolved.

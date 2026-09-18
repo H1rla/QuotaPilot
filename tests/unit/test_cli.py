@@ -25,6 +25,13 @@ def test_cli_version() -> None:
     assert result.output.strip() == __version__
 
 
+def test_cli_version_option() -> None:
+    result = runner.invoke(app, ["--version"])
+
+    assert result.exit_code == 0
+    assert result.output.strip() == __version__
+
+
 def test_cli_snapshot_help() -> None:
     result = runner.invoke(app, ["snapshot", "--help"])
 

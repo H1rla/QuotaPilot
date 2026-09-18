@@ -32,4 +32,21 @@ jobs:
         run: uv run pytest
 
       - name: CLI smoke test
-        run: uv run quotapilot --help
+        run: |
+          uv run quotapilot --version
+          uv run quotapilot --help
+          uv run quotapilot config validate --json
+          uv run quotapilot calibrate evaluate --json
+
+      - name: Build wheel and source distribution
+        run: uv build
+
+      - name: Installed-wheel smoke test
+        run: |
+          uv venv "$RUNNER_TEMP/quotapilot-wheel-smoke"
+          uv pip install --python "$RUNNER_TEMP/quotapilot-wheel-smoke/bin/python" dist/*.whl
+          "$RUNNER_TEMP/quotapilot-wheel-smoke/bin/quotapilot" --version
+          "$RUNNER_TEMP/quotapilot-wheel-smoke/bin/quotapilot" --help
+          "$RUNNER_TEMP/quotapilot-wheel-smoke/bin/quotapilot" config validate --json
+          "$RUNNER_TEMP/quotapilot-wheel-smoke/bin/python" -c "from quotapilot.capabilities import ModelProfileRegistry, default_profile_directory; ModelProfileRegistry.from_directory(default_profile_directory())"
+          "$RUNNER_TEMP/quotapilot-wheel-smoke/bin/quotapilot" calibrate evaluate --json
