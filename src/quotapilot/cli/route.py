@@ -5,12 +5,17 @@ from __future__ import annotations
 import asyncio
 import json
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Annotated
 
 import typer
 from pydantic import ValidationError
 
 from quotapilot.budget.engine import BudgetEngine
+from quotapilot.capabilities.enrichment import CapabilityEnricher
+from quotapilot.capabilities.errors import CapabilityProfileError
+from quotapilot.capabilities.loader import default_profile_directory
+from quotapilot.capabilities.registry import ModelProfileRegistry
 from quotapilot.history.errors import PersistenceError
 from quotapilot.history.sqlite import SqliteSnapshotRepository
 from quotapilot.routing.engine import RoutingEngine
@@ -92,6 +97,13 @@ def route(
         None, "--latency-sensitivity", min=0.0, max=1.0
     ),
     task_class: Annotated[TaskClass | None, typer.Option("--task-class")] = None,
+    profile_dir: Annotated[
+        Path | None,
+        typer.Option(
+            "--profile-dir",
+            help="Directory containing versioned model-profile YAML files.",
+        ),
+    ] = None,
 ) -> None:
     """Recommend a model and effort without executing the task."""
 
@@ -111,13 +123,18 @@ def route(
 
     async def run() -> None:
         repository = SqliteSnapshotRepository()
-        service = RoutingService(
-            repository,
-            BudgetEngine(),
-            RoutingEngine(),
-            TaskProfiler(),
-        )
         try:
+            registry = ModelProfileRegistry.from_directory(
+                profile_dir or default_profile_directory()
+            )
+            service = RoutingService(
+                repository,
+                BudgetEngine(),
+                RoutingEngine(),
+                TaskProfiler(),
+                CapabilityEnricher(),
+                registry,
+            )
             recommendation = await service.recommend_latest(
                 task,
                 now=datetime.now(UTC),
@@ -136,7 +153,7 @@ def route(
             else:
                 typer.echo(message, err=True)
             raise typer.Exit(code=2) from exc
-        except (RoutingError, PersistenceError) as exc:
+        except (CapabilityProfileError, RoutingError, PersistenceError) as exc:
             if json_output:
                 typer.echo(
                     json.dumps(

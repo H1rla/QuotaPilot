@@ -11,6 +11,8 @@ import typer
 from quotapilot import __version__
 from quotapilot.cli import snapshot
 from quotapilot.cli.budget import budget
+from quotapilot.cli.calibrate import app as calibrate_app
+from quotapilot.cli.models import models
 from quotapilot.cli.route import route
 
 app = typer.Typer(
@@ -19,7 +21,9 @@ app = typer.Typer(
     no_args_is_help=True,
 )
 app.add_typer(snapshot.app, name="snapshot")
+app.add_typer(calibrate_app, name="calibrate")
 app.command("budget")(budget)
+app.command("models")(models)
 app.command("route")(route)
 
 

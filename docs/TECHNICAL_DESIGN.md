@@ -222,6 +222,15 @@ QuotaPilot/
 │       │   ├── policy.py
 │       │   ├── scoring.py
 │       │   └── escalation.py
+│       ├── capabilities/
+│       │   ├── models.py
+│       │   ├── loader.py
+│       │   ├── registry.py
+│       │   └── enrichment.py
+│       ├── calibration/
+│       │   ├── models.py
+│       │   ├── loader.py
+│       │   └── evaluator.py
 │       ├── history/
 │       │   ├── repository.py
 │       │   ├── codex_logs.py
@@ -824,6 +833,7 @@ Clamp to `[0, 1]`.
 ## 16. Routing model
 
 **Implemented in Phase 5.** `docs/PHASE5_ROUTING_CONTRACT.md` is normative;
+
 this section retains the high-level model. The pure engine consumes
 `TaskProfile + BudgetReport + CapabilitySet + RoutingPolicy` and never reads a
 provider, database, environment, or clock. It excludes selectable models with
@@ -1314,6 +1324,31 @@ Implemented:
 
 Also exposes `quotapilot route` and `quotapilot route --json`. See
 `docs/PHASE5_ROUTING_CONTRACT.md`.
+
+
+### Phase 5.5 — Capability Metadata & Routing Calibration
+
+Detailed implementation contract: `docs/PHASE5_5_CALIBRATION_CONTRACT.md`
+
+Implemented. Phase 5.5 enriches discovered model capabilities with versioned,
+provenance-aware routing metadata and evaluates routing policy against
+deterministic synthetic calibration scenarios. Model-specific knowledge stays
+in `policies/model_profiles/`, outside the provider-independent router.
+
+Enrichment uses exact provider/model-ID matching and fills only absent fields.
+Existing normalized capability values win. Only fresh profiles are applied;
+stale and unknown-freshness matches remain observable but cannot make a model
+routable. Provenance is carried in model metadata and surfaced in route/model
+output. The pure enrichment and calibration paths perform no network or
+persistence I/O.
+
+`quotapilot models` inspects enriched metadata from the latest snapshot, and
+`quotapilot calibrate evaluate` replays the versioned scenario suite through
+the unchanged Phase 5 Routing Engine. The profile and scenario files are
+Git-reviewable root artifacts and are packaged into wheels. See
+`docs/PHASE5_5_CALIBRATION_CONTRACT.md`.
+
+This phase remains advisory. It does not execute model recommendations.
 
 ### Phase 6 — CLI dashboard and controlled integration
 

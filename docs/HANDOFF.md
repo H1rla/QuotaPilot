@@ -7,73 +7,85 @@
 
 - Date: 2026-09-18
 - Last agent: Codex
-- Current phase: **Phase 5 quota-aware advisory routing complete**
+- Current phase: **Phase 5.5 capability metadata and calibration complete**
 - Phase 2 provider boundary: **COMPLETE**
 - Phase 3/3.1 persistence boundary: **COMPLETE**
 - Phase 4/4.1 budget boundary: **COMPLETE**
 - Phase 5 routing boundary: **COMPLETE**
+- Phase 5.5 enrichment/calibration boundary: **COMPLETE**
 - Phase 6 automatic/controlled execution: **NOT IMPLEMENTED**
-- Phase 6 readiness: **READY**, with calibration limitations below
+- Phase 6 readiness: **READY**, subject to the limitations below
 - Dependency direction remains:
   `CLI -> Services -> Budget / Routing -> Domain`, `Persistence -> Domain`,
-  `Providers -> Domain`
+  `Providers -> Domain`; capability enrichment sits before Routing and imports
+  no provider implementation.
 
-The normative routing contract is `docs/PHASE5_ROUTING_CONTRACT.md`.
+The normative Phase 5.5 contract is
+`docs/PHASE5_5_CALIBRATION_CONTRACT.md`.
 
-## Phase 5 implementation
+## Phase 5.5 implementation
 
-### Task profile and policy
+### Capability profiles
 
-- `TaskProfile`, `TaskClass`, and `TaskProfileOverrides` are strict,
-  provider-neutral models with bounded dimensions and explicit
-  `heuristic`/`mixed`/`explicit` provenance.
-- `TaskProfiler` uses a small deterministic keyword table and fixed class
-  profiles; no LLM, clock, environment, or provider call is involved.
-- `RoutingPolicy` is strict/frozen, rejects unknown keys and coercion, and
-  centralizes scoring, fallback, effort, escalation, and alternatives policy.
+- `src/quotapilot/capabilities/` provides strict schema models, safe YAML
+  loading, an exact-ID registry, deterministic enrichment, typed errors, and
+  privacy-safe model views.
+- Schema version 1 rejects unknown keys, unsupported versions, malformed
+  dates, numeric coercion, invalid metric ranges/enums, missing provenance,
+  and ambiguous same-precedence definitions.
+- Matching is provider plus exact model ID. No alias, prefix, substring,
+  version, family, or model-name inference exists.
+- Existing normalized capability fields win. Fresh empirical, benchmark,
+  manual, fallback, and unknown profile entries may fill only missing fields
+  in that order. Unknown models stay present and unroutable.
+- Freshness uses an injected evaluation date. Only entries within the
+  inclusive verification/expiry interval apply. Stale, future-dated, and
+  missing-expiry entries remain visible with provenance and warnings but are
+  non-operative.
+- Repeated enrichment preserves profile provenance instead of relabeling a
+  previously supplied field as provider-confirmed.
 
-### Required power and candidate scoring
+### Initial Codex profile coverage
 
-- Difficulty uses the contract's 30/20/20/15/15 formula. Required power adds
-  0.10 each for failure cost and low verifiability.
-- A risk-tightened capability floor excludes severe underpowering before cost
-  can influence the winner. `CRITICAL + hard/high-risk` therefore still uses
-  a sufficient model when one exists.
-- Eligible utility exposes quality, quota, latency, and over-capability
-  components independently. Selection ties are utility, effective cost,
-  effective latency, then model ID.
-- `VERY_UNDER + trivial` favors adequate lightweight capability rather than
-  the strongest model.
-- Unknown quota uses the configurable neutral fallback (default 0.50), remains
-  labeled `fallback_unknown`, and emits a warning.
+- `policies/model_profiles/openai_codex.yaml` covers only the six exact IDs in
+  the sanitized and live 2026-09-18 catalogs: `gpt-6-astra`, `gpt-5.6-sol`,
+  `gpt-5.6-terra`, `gpt-5.6-luna`, `gpt-daybreak-blue-latest`, and `gpt-5.5`.
+- All six receive an explicit effort order matching the observed catalogs.
+- Only Astra and Luna receive provisional relative power. Only Luna receives
+  provisional cost and latency. The other four deliberately remain
+  unroutable until defensible power evidence exists.
+- Every supplied value is marked manual/provisional with human-readable
+  evidence. None is represented as an official provider score.
+- The root profile/scenario files remain Git-reviewable and are also included
+  as wheel data for installed CLI use.
 
-### Capability metadata and effort
+### Calibration
 
-- Non-selectable models and models without valid relative power remain visible
-  in candidate scores but cannot be selected. Power is never inferred from a
-  model ID.
-- Missing cost/latency uses a visible neutral fallback (default 0.50), never
-  zero.
-- `AIModel.effort_order` is the explicit normalized least-to-greatest order and
-  must exactly match the supported catalog. Unordered effort strings are
-  preserved but produce no effort recommendation.
-- Quota pressure can reduce effort only for low-risk, low-ambiguity,
-  high-verifiability work. High-risk work resists reduction.
+- `src/quotapilot/calibration/` and `calibration/scenarios.yaml` provide a
+  strict, deterministic replay layer over the existing Routing Engine.
+- Ten synthetic scenarios cover typo, refactor, bounded implementation,
+  test-writing, local and complex debugging, repository-wide change,
+  architecture, research/review, and high-risk low-verifiability work across
+  VERY_UNDER, ON_TRACK, OVER, CRITICAL, and UNKNOWN quota.
+- Initial result: **10/10 acceptable hits** and zero unacceptable,
+  capability-floor, anti-waste, UNKNOWN-quota, unsupported-effort,
+  non-selectable-model, determinism, or routing-failure violations.
+- The evaluator reports component metrics only. It does not optimize policy,
+  mutate profiles, use an LLM/network, or execute a recommendation.
 
-### Escalation, alternatives, and output
+### Service and CLI
 
-- Escalation is advisory and monotonic: higher effort and/or the next stronger
-  eligible model. It contains no duplicates, unsupported efforts, weaker
-  fallback, or execution behavior.
-- Alternatives are bounded and drawn only from known selectable eligible
-  models.
-- Deterministic explanations include difficulty, risk, quota effect,
-  capability floor, weaker/stronger tradeoffs, effort, and escalation.
-- `quotapilot route "..."` and `--json` use the latest persisted snapshot via
-  `RoutingService`. Expected no-snapshot/no-route states are clean errors.
-- Route JSON contains routing-domain information and the user-supplied task,
-  but no account ID, plan, raw observations, credentials, or hidden capability
-  metadata. Task text is not persisted.
+- `RoutingService` optionally enriches the latest persisted CapabilitySet
+  before invoking the unchanged pure router. Material local-profile use is
+  exposed in deterministic explanations/warnings and lowers confidence for
+  low/provisional metadata.
+- `quotapilot route` enables the shipped profile registry by default and
+  accepts `--profile-dir` for explicit alternatives.
+- `quotapilot models [--json] [--as-of DATE]` exposes only routing-relevant
+  capability/profile data, including routability, provenance, confidence, and
+  freshness. It does not fetch live data or expose account fields.
+- `quotapilot calibrate evaluate [--json]` reports the scenario outcomes and
+  component violation metrics.
 
 ## Verification
 
@@ -85,48 +97,52 @@ uv run ruff check .
 uv run pyright
 uv run quotapilot --help
 uv run quotapilot route --help
+uv run quotapilot models --help
+uv run quotapilot calibrate evaluate --help
 QUOTAPILOT_INTEGRATION=1 uv run pytest tests/integration/
 ```
 
 Results:
 
-- Offline/default pytest: **309 passed, 5 skipped**. The five skips are the
-  explicitly gated authenticated integration suite.
+- Offline/default pytest: **347 passed, 5 skipped**. The five skips are the
+  explicitly gated authenticated live tests.
+- Live integration: **5 passed**. It verifies live catalog -> persistence ->
+  budget -> exact profile enrichment -> route where fresh exact metadata is
+  available; unmatched models remain safely unroutable.
 - Ruff: **All checks passed**.
 - Pyright: **0 errors, 0 warnings, 0 informations**.
-- Root and route CLI help: **PASS**.
-- Live integration: **5 passed**. Capture -> temporary SQLite -> BudgetReport
-  remains successful. Current live Codex models lack explicit QuotaPilot
-  relative routing metadata, so the test verifies a typed no-route result
-  rather than inventing model power.
+- Root, route, models, and calibration CLI help commands: **PASS**.
 
 Normal CI remains offline and credential-free.
 
 ## Privacy/security state
 
-- Phase 3.1 account pseudonymization and provider sanitization are unchanged.
-- Routing imports no OpenAI/Codex implementation or SQLite implementation.
-- The pure engine performs no I/O and no automatic execution.
-- No prompt/task storage, credentials, raw account identity, live telemetry,
-  provider cookies, or generated caches were added to tracked content.
+- Profile and calibration YAML use `yaml.safe_load` plus strict Pydantic
+  validation; no executable YAML/Python hooks are accepted.
+- No prompt history, raw account identity, credential, token, session ID,
+  private task/source text, or live usage telemetry was added.
+- Model inspection is a safe projection and does not expose account, plan, or
+  raw snapshot metadata.
+- The pure enrichment/calibration paths perform no network, SQLite, provider,
+  environment, or execution operation.
+- Phase 6 execution behavior does not exist.
 
 ## Remaining risks / deferred decisions
 
-- Routing coefficients and class profiles are deterministic heuristics, not
-  empirically calibrated measurements of model performance.
-- Current Codex `model/list` data does not provide normalized relative
-  power/cost/latency or verified effort order. A future external capability
-  definition/calibration layer is required before live models become routable;
-  it must not infer tiers from IDs.
-- Missing cost/latency intentionally uses a neutral fallback, lowering
-  recommendation confidence.
-- Task profiling is deliberately small and keyword-based; explicit overrides
-  are the precision mechanism in Phase 5.
+- Numeric profile values and routing coefficients are provisional heuristics,
+  not empirically calibrated measurements. The ten-scenario suite is a
+  regression baseline, not evidence of optimal model choice.
+- Only two current Codex models have provisional power values; four remain
+  unroutable by design. Exact future IDs receive no inherited metadata.
+- Profile freshness requires human review and a Git update before expiry.
+- Effort ordering is local policy based on the observed provider catalog; it
+  is not represented as provider-confirmed ranking metadata.
 - Long-lived versus ephemeral Codex app-server lifecycle remains deferred.
 
 ## Next task
 
-Phase 6 may design controlled execution/integration around the advisory
-`RoutingRecommendation`. It must not treat a recommendation as authorization,
-must require explicit trustworthy capability metadata, and must preserve the
-no-hidden-task-persistence and provider-independence boundaries.
+Phase 6 may design a controlled integration around advisory
+`RoutingRecommendation` values. It must treat profile provenance/confidence as
+policy evidence rather than provider truth, require explicit authorization for
+execution, preserve exact capability matching, and keep task persistence and
+automatic escalation out unless separately designed and approved.

@@ -804,3 +804,39 @@ and over-capability penalties. Ties use effective cost, effective latency, and
 model ID. Effort reduction under quota pressure is allowed only for low-risk,
 high-verifiability work. Escalation raises effort or moves monotonically to a
 stronger discovered candidate; it never executes or moves back down.
+
+---
+
+## 2026-09-18 — Phase 5.5: external capability profiles and calibration
+
+### Exact, partial, provenance-bearing profiles
+
+**Decision**: Model-specific routing knowledge lives in strict version-1 YAML
+under `policies/model_profiles/`, not in the routing engine. Matching requires
+provider identity plus an exact complete model ID; aliases, prefixes,
+substrings, and family inheritance are not implemented. Every profile entry
+has a finite source/confidence enum and human-readable evidence. Partial
+profiles are valid, and missing power deliberately leaves a model unroutable.
+
+### Precedence and freshness
+
+**Decision**: Existing normalized capability values always win. Missing fields
+may be filled in source order: empirical, benchmark, manual, fallback, then
+unknown; a profile marked provider-sourced ranks above those but still cannot
+overwrite an existing capability field. Same-precedence duplicate definitions
+for one provider/model pair are rejected as ambiguous.
+
+Freshness is evaluated from an injected date. Only profiles within the
+inclusive `verified_at`/expiry interval apply automatically. Expired,
+future-dated, or no-expiry profiles remain observable with provenance and a
+warning but do not affect routing. This chooses a safe no-route over silently
+using unbounded or stale policy.
+
+### Calibration is a review gate, not an optimizer
+
+**Decision**: Versioned synthetic scenarios replay the unchanged Phase 5
+Routing Engine and report separate acceptable-result, anti-waste,
+capability-floor, UNKNOWN-quota, effort, selectability, and determinism
+metrics. Calibration performs no coefficient search, profile mutation,
+telemetry collection, or recommendation execution. Policy changes remain
+human-reviewed Git changes.

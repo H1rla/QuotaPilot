@@ -53,3 +53,13 @@ provider-specific.
 **Rule going forward**: Preserve unknown candidates, require explicit power and
 normalized effort order for ranking, and surface a typed no-route result until
 an external capability definition supplies trustworthy metadata.
+
+## 2026-09-18 — Capability policy needs both provenance and an expiry boundary
+**What happened**: A local model profile can make incomplete provider catalogs
+routable, but re-enriching or applying an old profile can accidentally make
+manual policy look like current provider truth.
+**Why**: A value alone does not retain who supplied it, when it was verified,
+or whether it is still safe to apply.
+**Rule going forward**: Fill only missing capability fields, preserve field
+provenance across repeated enrichment, require exact model IDs, and keep
+stale/future/unknown-freshness profiles visible but non-operative.

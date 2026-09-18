@@ -1,0 +1,65 @@
+schema_version: 1
+provider: openai-codex
+product: codex
+verified_at: 2026-09-18
+expires_after_days: 180
+
+models:
+  gpt-6-astra:
+    relative_power: 1.0
+    effort_order: [low, medium, high, xhigh, max, ultra]
+    provenance:
+      source: manual
+      confidence: provisional
+      evidence:
+        - "The verified model/list catalog describes this exact ID as the most capable model for complex, demanding work."
+        - "Effort labels are ordered by provider descriptions from lighter through maximum reasoning; the numeric power value remains local policy."
+
+  gpt-5.6-sol:
+    effort_order: [low, medium, high, xhigh, max, ultra]
+    provenance:
+      source: manual
+      confidence: provisional
+      evidence:
+        - "The verified model/list catalog supplies this exact effort catalog and describes each successive entry as greater reasoning depth."
+        - "No defensible relative power, cost, or latency value is currently supplied."
+
+  gpt-5.6-terra:
+    effort_order: [low, medium, high, xhigh, max, ultra]
+    provenance:
+      source: manual
+      confidence: provisional
+      evidence:
+        - "The verified model/list catalog supplies this exact effort catalog and describes each successive entry as greater reasoning depth."
+        - "No defensible relative power, cost, or latency value is currently supplied."
+
+  gpt-5.6-luna:
+    relative_power: 0.55
+    relative_cost: 0.20
+    relative_latency: 0.15
+    effort_order: [low, medium, high, xhigh, max]
+    provenance:
+      source: manual
+      confidence: provisional
+      evidence:
+        - "The verified model/list catalog describes this exact ID as fast and affordable; cost and latency are coarse local routing estimates, not API prices or benchmarks."
+        - "Power is intentionally moderate and provisional; it is not inferred from the model name."
+        - "Effort labels are ordered by provider descriptions from lighter through maximum reasoning."
+
+  gpt-daybreak-blue-latest:
+    effort_order: [low, medium, high, xhigh, max, ultra]
+    provenance:
+      source: manual
+      confidence: provisional
+      evidence:
+        - "The verified model/list catalog supplies this exact effort catalog and describes each successive entry as greater reasoning depth."
+        - "Its specialty description is not converted into a generic relative power score."
+
+  gpt-5.5:
+    effort_order: [low, medium, high, xhigh]
+    provenance:
+      source: manual
+      confidence: provisional
+      evidence:
+        - "The verified model/list catalog supplies this exact effort catalog and describes each successive entry as greater reasoning depth."
+        - "Previous-generation wording alone is insufficient for numeric routing metrics."

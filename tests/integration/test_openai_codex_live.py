@@ -8,11 +8,15 @@ Never prints account identifiers/emails/tokens — only shapes and ranges.
 from __future__ import annotations
 
 import os
+from datetime import UTC
 from pathlib import Path
 
 import pytest
 
 from quotapilot.budget.engine import BudgetEngine
+from quotapilot.capabilities.enrichment import CapabilityEnricher
+from quotapilot.capabilities.loader import default_profile_directory
+from quotapilot.capabilities.registry import ModelProfileRegistry
 from quotapilot.history.sqlite import SqliteSnapshotRepository
 from quotapilot.providers.openai_codex.provider import OpenAICodexProvider
 from quotapilot.routing.engine import RoutingEngine
@@ -124,3 +128,26 @@ async def test_live_capture_save_reload_round_trip(tmp_path: Path) -> None:
             profile, report, reloaded.account.capabilities
         )
         assert recommendation.selected_model_id in {model.id for model in routable_models}
+
+    registry = ModelProfileRegistry.from_directory(default_profile_directory())
+    enriched = CapabilityEnricher().enrich(
+        reloaded.account.capabilities,
+        registry,
+        evaluated_on=reloaded.captured_at.astimezone(UTC).date(),
+    )
+    profiled_routable = {
+        model.id
+        for model in enriched.models
+        if model.selectable and model.relative_power is not None
+    }
+    if not profiled_routable:
+        # A newly added or stale catalog is a safe typed no-route, not a reason
+        # to guess metadata from a similar-looking model ID.
+        with pytest.raises(NoRoutableModelError):
+            RoutingEngine().recommend(profile, report, enriched)
+    else:
+        recommendation = RoutingEngine().recommend(profile, report, enriched)
+        assert recommendation.selected_model_id in profiled_routable
+        for model in enriched.models:
+            if not model.metadata["routing_profile"]["matched"]:
+                assert model.relative_power is None

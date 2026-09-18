@@ -1,0 +1,209 @@
+schema_version: 1
+capability_profile_version: synthetic-v1
+
+models:
+  - model_id: calibration-light
+    selectable: true
+    relative_power: 0.35
+    relative_cost: 0.15
+    relative_latency: 0.10
+    effort_order: [low, medium]
+  - model_id: calibration-balanced
+    selectable: true
+    relative_power: 0.65
+    relative_cost: 0.45
+    relative_latency: 0.35
+    effort_order: [low, medium, high]
+  - model_id: calibration-strong
+    selectable: true
+    relative_power: 0.95
+    relative_cost: 0.90
+    relative_latency: 0.75
+    effort_order: [medium, high, max]
+  - model_id: calibration-hidden
+    selectable: false
+    relative_power: 1.0
+    relative_cost: 0.05
+    relative_latency: 0.05
+    effort_order: [max]
+
+scenarios:
+  - scenario_id: trivial-typo-very-under
+    capability_profile_version: synthetic-v1
+    task:
+      summary: "Synthetic typo correction"
+      task_class: mechanical
+      complexity: 0.10
+      ambiguity: 0.05
+      failure_cost: 0.10
+      verifiability: 0.98
+      context_demand: 0.05
+      latency_sensitivity: 0.80
+    quota_state: very_under
+    quota_pressure: 0.0
+    acceptable_models: [calibration-light]
+    unacceptable_models: [calibration-strong, calibration-hidden]
+    anti_waste_guard: true
+    notes: "A trivial, mechanically verifiable edit should not consume the strongest option."
+
+  - scenario_id: small-deterministic-refactor-on-track
+    capability_profile_version: synthetic-v1
+    task:
+      summary: "Synthetic small deterministic refactor"
+      task_class: local_implementation
+      complexity: 0.35
+      ambiguity: 0.20
+      failure_cost: 0.30
+      verifiability: 0.90
+      context_demand: 0.30
+      latency_sensitivity: 0.50
+    quota_state: on_track
+    quota_pressure: 0.35
+    acceptable_models: [calibration-light, calibration-balanced]
+    unacceptable_models: [calibration-hidden]
+    anti_waste_guard: false
+    notes: "A bounded refactor may use either efficient candidate when the floor permits."
+
+  - scenario_id: bounded-implementation-over
+    capability_profile_version: synthetic-v1
+    task:
+      summary: "Synthetic bounded feature implementation"
+      task_class: local_implementation
+      complexity: 0.55
+      ambiguity: 0.35
+      failure_cost: 0.45
+      verifiability: 0.75
+      context_demand: 0.50
+      latency_sensitivity: 0.35
+    quota_state: over
+    quota_pressure: 0.70
+    acceptable_models: [calibration-balanced]
+    unacceptable_models: [calibration-hidden]
+    anti_waste_guard: false
+    notes: "Normal implementation should retain adequate midrange capability under pressure."
+
+  - scenario_id: test-writing-critical
+    capability_profile_version: synthetic-v1
+    task:
+      summary: "Synthetic deterministic unit-test writing"
+      task_class: local_implementation
+      complexity: 0.40
+      ambiguity: 0.20
+      failure_cost: 0.30
+      verifiability: 0.95
+      context_demand: 0.35
+      latency_sensitivity: 0.45
+    quota_state: critical
+    quota_pressure: 1.0
+    acceptable_models: [calibration-light, calibration-balanced]
+    unacceptable_models: [calibration-strong, calibration-hidden]
+    anti_waste_guard: true
+    notes: "High verifiability permits efficiency without selecting a hidden or strongest model."
+
+  - scenario_id: local-debugging-on-track
+    capability_profile_version: synthetic-v1
+    task:
+      summary: "Synthetic local debugging"
+      task_class: debugging
+      complexity: 0.60
+      ambiguity: 0.45
+      failure_cost: 0.55
+      verifiability: 0.60
+      context_demand: 0.55
+      latency_sensitivity: 0.30
+    quota_state: on_track
+    quota_pressure: 0.35
+    acceptable_models: [calibration-balanced, calibration-strong]
+    unacceptable_models: [calibration-hidden]
+    anti_waste_guard: false
+    notes: "Local debugging needs sufficient reasoning but may not require the strongest model."
+
+  - scenario_id: complex-debugging-over
+    capability_profile_version: synthetic-v1
+    task:
+      summary: "Synthetic complex cross-module debugging"
+      task_class: debugging
+      complexity: 0.88
+      ambiguity: 0.75
+      failure_cost: 0.75
+      verifiability: 0.35
+      context_demand: 0.90
+      latency_sensitivity: 0.20
+    quota_state: over
+    quota_pressure: 0.70
+    acceptable_models: [calibration-strong]
+    unacceptable_models: [calibration-light, calibration-hidden]
+    anti_waste_guard: false
+    notes: "Quota pressure must not bypass the capability floor for complex debugging."
+
+  - scenario_id: repository-wide-critical
+    capability_profile_version: synthetic-v1
+    task:
+      summary: "Synthetic repository-wide change"
+      task_class: repository_change
+      complexity: 0.82
+      ambiguity: 0.65
+      failure_cost: 0.80
+      verifiability: 0.40
+      context_demand: 0.95
+      latency_sensitivity: 0.15
+    quota_state: critical
+    quota_pressure: 1.0
+    acceptable_models: [calibration-strong]
+    unacceptable_models: [calibration-light, calibration-hidden]
+    anti_waste_guard: false
+    notes: "The hard safety floor dominates quota conservation."
+
+  - scenario_id: architecture-critical
+    capability_profile_version: synthetic-v1
+    task:
+      summary: "Synthetic architecture decision"
+      task_class: architecture
+      complexity: 0.92
+      ambiguity: 0.85
+      failure_cost: 0.92
+      verifiability: 0.20
+      context_demand: 0.90
+      latency_sensitivity: 0.10
+    quota_state: critical
+    quota_pressure: 1.0
+    acceptable_models: [calibration-strong]
+    unacceptable_models: [calibration-light, calibration-balanced, calibration-hidden]
+    anti_waste_guard: false
+    notes: "High-risk architecture must never route below the capability floor."
+
+  - scenario_id: research-review-unknown
+    capability_profile_version: synthetic-v1
+    task:
+      summary: "Synthetic research and review"
+      task_class: review
+      complexity: 0.68
+      ambiguity: 0.65
+      failure_cost: 0.55
+      verifiability: 0.45
+      context_demand: 0.70
+      latency_sensitivity: 0.20
+    quota_state: unknown
+    quota_pressure: null
+    acceptable_models: [calibration-balanced, calibration-strong]
+    unacceptable_models: [calibration-hidden]
+    anti_waste_guard: false
+    notes: "UNKNOWN quota must use the explicit neutral fallback rather than either extreme."
+
+  - scenario_id: high-failure-low-verifiability-critical
+    capability_profile_version: synthetic-v1
+    task:
+      summary: "Synthetic high-failure-cost low-verifiability task"
+      task_class: architecture
+      complexity: 0.85
+      ambiguity: 0.80
+      failure_cost: 0.98
+      verifiability: 0.10
+      context_demand: 0.85
+      latency_sensitivity: 0.10
+    quota_state: critical
+    quota_pressure: 1.0
+    acceptable_models: [calibration-strong]
+    unacceptable_models: [calibration-light, calibration-balanced, calibration-hidden]
+    anti_waste_guard: false
+    notes: "Risk protection must dominate cost pressure."
