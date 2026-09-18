@@ -34,3 +34,12 @@ days and reset-at-midnight timestamps.
 budgets non-deterministic.
 **Rule going forward**: Use an explicit configured timezone and document
 whether current/reset dates count before implementing calendar-based policy.
+
+## 2026-09-18 — Aware datetime arithmetic is not automatically instant arithmetic
+**What happened**: Subtraction of aware datetimes sharing one `ZoneInfo` could
+measure local wall-clock hours across DST instead of actual elapsed seconds.
+**Why**: Python preserves same-zone wall-time semantics in this case, which is
+useful for calendars but wrong for quota durations and stale-age checks.
+**Rule going forward**: Convert both operands to UTC before elapsed-time or
+ordering calculations; convert to local time only for explicit calendar-day
+semantics.

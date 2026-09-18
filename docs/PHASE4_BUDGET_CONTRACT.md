@@ -48,6 +48,13 @@ must produce equal reports.
 pool IDs are rejected as an inconsistent input because deterministic binding
 selection would otherwise be ambiguous.
 
+All elapsed-time arithmetic and ordering use UTC-normalized instants. This
+includes window duration/progress, time until reset, snapshot age,
+before/after comparisons, and derived starts. The configured local timezone
+is used only for calendar semantics: weekday selection, local reset date, and
+daily allocation buckets. Aware datetimes must never be subtracted in local
+wall-clock form across a daylight-saving transition.
+
 ## 4. Budget state
 
 ```text
@@ -123,6 +130,9 @@ reset = resets_at
 timing_source = start_reset
 ```
 
+The comparison and all subsequent duration arithmetic operate on the UTC
+instants represented by these timestamps, not their local wall-clock values.
+
 `start_reset` describes which normalized domain fields the budget calculation
 used; it does not claim the provider directly reported the start. Provider
 adapters retain their own fact/inference provenance in pool metadata.
@@ -138,7 +148,10 @@ reset = resets_at
 timing_source = derived_window_seconds
 ```
 
-The source is explicitly derived. A provider adapter must leave
+The reset is first normalized to UTC, then `window_seconds` is subtracted as
+elapsed seconds. Thus a duration of 86400 is exactly 24 elapsed hours even
+when the corresponding local wall-clock interval crosses a 23- or 25-hour
+day. The source is explicitly derived. A provider adapter must leave
 `window_seconds=None` when it cannot establish a duration; the Budget Engine
 does not infer duration from names, kinds, scopes, or prior snapshots.
 
@@ -171,6 +184,8 @@ window_progress = clamp(window_progress, 0, 1)
 expected_usage = window_progress * (1 - reserve_fraction)
 ```
 
+`now`, `start`, and `reset` are UTC-normalized instants for this arithmetic.
+
 Before start, progress is `0`; after reset, progress is `1`. Both conditions
 emit warnings. A past reset has no daily budget remaining, but the historical
 pace calculation remains deterministic.
@@ -193,6 +208,9 @@ ON_TRACK   -0.07 <= delta <= 0.07
 OVER        0.07 < delta <= 0.20
 CRITICAL    0.20 < delta
 ```
+
+Classification uses these direct comparisons exactly. There is no tolerance,
+`isclose` band, rounding, or implicit quantization around a threshold.
 
 Threshold ordering must be strict:
 
@@ -250,6 +268,11 @@ today_budget_fraction =
     / sum(remaining_day_weights)
 ```
 
+The denominator is computed in constant time with respect to interval length:
+complete seven-day weeks contribute `week_count * sum(weekday_weights)`, and
+only the at-most-six remaining weekdays are inspected. The implementation
+must not materialize one object per remaining calendar date.
+
 If all remaining dates have zero weight, today's budget is unavailable and a
 warning is emitted. Therefore:
 
@@ -305,7 +328,8 @@ Default:
 stale_after_seconds = 900
 ```
 
-Snapshot age is `now - captured_at`.
+Snapshot age is `now_utc - captured_at_utc`, using elapsed instants rather
+than local wall-clock subtraction.
 
 * Age greater than the configured threshold returns a normal report with
   `is_stale=True` and `snapshot_stale` warning.
@@ -348,6 +372,11 @@ RPC data, or credentials.
 * a valid IANA timezone,
 * positive stale threshold,
 * pressure values in `[0, 1]` and non-decreasing order.
+
+`BudgetConfig` and `WeekdayWeights` use strict field validation and forbid
+unknown keys. String-to-number coercion, booleans supplied as integers, and
+misspelled fields are rejected. A future YAML/environment loader must perform
+any intentional conversion before constructing these core policy models.
 
 Configuration loading/YAML merging is outside the mathematical engine and is
 not required in Phase 4.
@@ -393,3 +422,7 @@ Phase 4 is complete when:
 10. Offline unit/integration tests cover all boundary cases in this contract.
 11. Optional live capture -> persist -> evaluate remains explicitly gated.
 12. No Phase 5 routing, scoring, effort, or escalation code exists.
+13. Elapsed calculations are correct across DST folds/gaps and derived
+    durations remain exact elapsed seconds.
+14. Threshold neighbors follow the stated inequalities with no fuzzy band.
+15. Daily allocation is O(1) in the number of remaining days.

@@ -39,7 +39,7 @@ class RemainingSource(StrEnum):
 class WeekdayWeights(BaseModel):
     """Non-negative calendar-day allocation weights, Monday first."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, strict=True, extra="forbid")
 
     monday: float = Field(default=1.0, ge=0.0, allow_inf_nan=False)
     tuesday: float = Field(default=1.0, ge=0.0, allow_inf_nan=False)
@@ -73,7 +73,7 @@ class WeekdayWeights(BaseModel):
 class BudgetConfig(BaseModel):
     """Quota policy only; contains no provider or plan-specific settings."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, strict=True, extra="forbid")
 
     reserve_fraction: float = Field(default=0.10, ge=0.0, lt=1.0, allow_inf_nan=False)
 

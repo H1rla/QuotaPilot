@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from datetime import date, datetime, time, timedelta
+from datetime import UTC, datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
 from quotapilot.budget.errors import BudgetEvaluationError
@@ -40,15 +40,16 @@ class BudgetEngine:
     def evaluate(self, snapshot: UsageSnapshot, *, now: datetime) -> BudgetReport:
         if now.utcoffset() is None:
             raise BudgetEvaluationError("evaluation time must be timezone-aware")
+        now_utc = now.astimezone(UTC)
 
         pool_ids = [pool.id for pool in snapshot.quota_pools]
         if len(pool_ids) != len(set(pool_ids)):
             raise BudgetEvaluationError("quota pool ids must be unique")
 
-        assessments = tuple(self._assess_pool(pool, now) for pool in snapshot.quota_pools)
+        assessments = tuple(self._assess_pool(pool, now_utc) for pool in snapshot.quota_pools)
         binding = self._select_binding_pool(assessments)
 
-        snapshot_age = (now - snapshot.captured_at).total_seconds()
+        snapshot_age = (now_utc - snapshot.captured_at.astimezone(UTC)).total_seconds()
         report_warnings: list[str] = []
         is_stale = snapshot_age > self._config.stale_after_seconds
         if is_stale:
@@ -75,7 +76,7 @@ class BudgetEngine:
             warnings=tuple(report_warnings),
         )
 
-    def _assess_pool(self, pool: QuotaPool, now: datetime) -> PoolBudgetAssessment:
+    def _assess_pool(self, pool: QuotaPool, now_utc: datetime) -> PoolBudgetAssessment:
         warnings: list[str] = []
         actual = pool.used_fraction
         if actual is None:
@@ -108,14 +109,14 @@ class BudgetEngine:
         pressure: float | None = None
 
         if timing is not None:
-            raw_progress = (now - timing.start).total_seconds() / (
+            raw_progress = (now_utc - timing.start).total_seconds() / (
                 timing.reset - timing.start
             ).total_seconds()
             progress = min(1.0, max(0.0, raw_progress))
             expected = progress * (1.0 - self._config.reserve_fraction)
-            if now < timing.start:
+            if now_utc < timing.start:
                 warnings.append("evaluation_before_window_start")
-            if now >= timing.reset:
+            if now_utc >= timing.reset:
                 warnings.append("reset_time_passed")
             if actual is not None:
                 pace_delta = actual - expected
@@ -127,13 +128,14 @@ class BudgetEngine:
         reset = pool.resets_at
         time_until_reset = None
         if reset is not None:
-            time_until_reset = max(0, math.floor((reset - now).total_seconds()))
+            reset_utc = reset.astimezone(UTC)
+            time_until_reset = max(0, math.floor((reset_utc - now_utc).total_seconds()))
 
         today_budget = self._today_budget(
             available=available,
             reset=reset,
             period_start=timing.start if timing is not None else None,
-            now=now,
+            now_utc=now_utc,
             warnings=warnings,
         )
 
@@ -167,19 +169,21 @@ class BudgetEngine:
     @staticmethod
     def _resolve_timing(pool: QuotaPool, warnings: list[str]) -> _Timing | None:
         if pool.starts_at is not None and pool.resets_at is not None:
-            if pool.resets_at <= pool.starts_at:
+            start_utc = pool.starts_at.astimezone(UTC)
+            reset_utc = pool.resets_at.astimezone(UTC)
+            if reset_utc <= start_utc:
                 warnings.append("invalid_window_timing")
                 return None
             if pool.window_seconds is not None and not math.isclose(
-                (pool.resets_at - pool.starts_at).total_seconds(),
+                (reset_utc - start_utc).total_seconds(),
                 pool.window_seconds,
                 rel_tol=0.0,
                 abs_tol=1e-9,
             ):
                 warnings.append("window_seconds_conflicts_with_start_reset")
             return _Timing(
-                start=pool.starts_at,
-                reset=pool.resets_at,
+                start=start_utc,
+                reset=reset_utc,
                 source=TimingSource.START_RESET,
             )
 
@@ -189,9 +193,10 @@ class BudgetEngine:
             if pool.window_seconds <= 0:
                 warnings.append("invalid_window_timing")
                 return None
+            reset_utc = pool.resets_at.astimezone(UTC)
             return _Timing(
-                start=pool.resets_at - timedelta(seconds=pool.window_seconds),
-                reset=pool.resets_at,
+                start=reset_utc - timedelta(seconds=pool.window_seconds),
+                reset=reset_utc,
                 source=TimingSource.DERIVED_WINDOW_SECONDS,
             )
 
@@ -199,25 +204,13 @@ class BudgetEngine:
 
     def _classify(self, pace_delta: float) -> BudgetState:
         config = self._config
-        at_very_under = math.isclose(
-            pace_delta, config.very_under_threshold, rel_tol=0.0, abs_tol=1e-12
-        )
-        at_under = math.isclose(
-            pace_delta, config.under_threshold, rel_tol=0.0, abs_tol=1e-12
-        )
-        at_over = math.isclose(
-            pace_delta, config.over_threshold, rel_tol=0.0, abs_tol=1e-12
-        )
-        at_critical = math.isclose(
-            pace_delta, config.critical_threshold, rel_tol=0.0, abs_tol=1e-12
-        )
-        if pace_delta < config.very_under_threshold and not at_very_under:
+        if pace_delta < config.very_under_threshold:
             return BudgetState.VERY_UNDER
-        if pace_delta < config.under_threshold and not at_under:
+        if pace_delta < config.under_threshold:
             return BudgetState.UNDER
-        if pace_delta < config.over_threshold or at_over:
+        if pace_delta <= config.over_threshold:
             return BudgetState.ON_TRACK
-        if pace_delta < config.critical_threshold or at_critical:
+        if pace_delta <= config.critical_threshold:
             return BudgetState.OVER
         return BudgetState.CRITICAL
 
@@ -237,19 +230,20 @@ class BudgetEngine:
         available: float | None,
         reset: datetime | None,
         period_start: datetime | None,
-        now: datetime,
+        now_utc: datetime,
         warnings: list[str],
     ) -> float | None:
         if available is None or reset is None:
             return None
-        if reset <= now:
+        reset_utc = reset.astimezone(UTC)
+        if reset_utc <= now_utc:
             return 0.0
-        if period_start is not None and now < period_start:
+        if period_start is not None and now_utc < period_start:
             return None
 
         timezone = ZoneInfo(self._config.timezone)
-        local_now = now.astimezone(timezone)
-        local_reset = reset.astimezone(timezone)
+        local_now = now_utc.astimezone(timezone)
+        local_reset = reset_utc.astimezone(timezone)
         first_date = local_now.date()
         last_date = local_reset.date()
         if local_reset.timetz().replace(tzinfo=None) == time.min:
@@ -257,25 +251,38 @@ class BudgetEngine:
         if last_date < first_date:
             return 0.0
 
-        dates = self._date_range(first_date, last_date)
-        weights = tuple(
-            self._config.weekday_weights.for_weekday(day.weekday()) for day in dates
+        day_count = (last_date - first_date).days + 1
+        normalized_total, normalized_today = self._normalized_weight_total(
+            first_weekday=first_date.weekday(),
+            day_count=day_count,
         )
-        max_weight = max(weights)
-        if max_weight <= 0.0:
+        if normalized_total <= 0.0:
             warnings.append("remaining_day_weights_zero")
             return None
 
-        today_weight = self._config.weekday_weights.for_weekday(first_date.weekday())
-        # Normalize before summing so arbitrarily scaled finite policy weights
-        # cannot overflow while computing an otherwise scale-invariant ratio.
-        normalized_total = sum(weight / max_weight for weight in weights)
-        return available * (today_weight / max_weight) / normalized_total
+        return available * normalized_today / normalized_total
 
-    @staticmethod
-    def _date_range(first: date, last: date) -> tuple[date, ...]:
-        count = (last - first).days + 1
-        return tuple(first + timedelta(days=offset) for offset in range(count))
+    def _normalized_weight_total(
+        self, *, first_weekday: int, day_count: int
+    ) -> tuple[float, float]:
+        """Return interval and first-day weights in O(1) calendar operations."""
+        weights = self._config.weekday_weights.as_tuple()
+        full_weeks, remainder = divmod(day_count, 7)
+        if full_weeks:
+            max_weight = max(weights)
+        else:
+            # At most six entries: use only weekdays actually in the interval,
+            # matching the former per-date normalization even for extreme weights.
+            max_weight = max(
+                weights[(first_weekday + offset) % 7] for offset in range(remainder)
+            )
+        if max_weight <= 0.0:
+            return 0.0, 0.0
+
+        normalized = tuple(weight / max_weight for weight in weights)
+        total = full_weeks * sum(normalized)
+        total += sum(normalized[(first_weekday + offset) % 7] for offset in range(remainder))
+        return total, normalized[first_weekday]
 
     @staticmethod
     def _select_binding_pool(

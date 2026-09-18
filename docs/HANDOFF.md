@@ -7,67 +7,59 @@
 
 - Date: 2026-09-18
 - Last agent: Codex
-- Current phase: **Phase 4 Budget Engine complete**
+- Current phase: **Phase 4.1 Budget Engine stabilization complete**
 - Phase 2 provider boundary: **COMPLETE**
 - Phase 3/3.1 persistence boundary: **COMPLETE**
-- Phase 4 budget boundary: **COMPLETE**
+- Phase 4/4.1 budget boundary: **COMPLETE**
 - Phase 5 routing readiness: **READY**, but routing has not started
 - Dependency direction remains:
   `CLI -> Services -> Budget -> Domain`, `Persistence -> Domain`,
   `Providers -> Domain`
 
-The normative Phase 4 contract is
-`docs/PHASE4_BUDGET_CONTRACT.md`.
+The normative budget contract is `docs/PHASE4_BUDGET_CONTRACT.md`.
 
-## Phase 4 implementation
+## Phase 4.1 stabilization
 
-### Pure Budget Engine
+### UTC instant arithmetic
 
-- Added `src/quotapilot/budget/`:
-  - `models.py`: `BudgetState`, `TimingSource`, `RemainingSource`,
-    `WeekdayWeights`, `BudgetConfig`, `PoolBudgetAssessment`, `BudgetReport`.
-  - `engine.py`: pure snapshot evaluation, expected pace, reserve, state,
-    daily allocation, multi-window binding, stale warnings.
-  - `errors.py`: exceptional caller-contract failures only.
-- Inputs are only `UsageSnapshot`, `BudgetConfig`, and an aware evaluation
-  time. The engine has no provider, RPC, SQLite, plan, or model-name imports.
-- Same inputs produce equal reports. No internal clock calls exist.
+- All duration and ordering operations normalize operands to UTC first:
+  window progress/duration, time until reset, snapshot age, future/before/
+  after checks, and derived starts.
+- Configured local timezone is used only for calendar-day bucket semantics.
+- `resets_at - window_seconds` now subtracts from `reset_utc`, so 86400 means
+  exactly 86400 elapsed seconds across 23/25-hour DST days.
+- Regression coverage includes the 2026 America/New_York spring gap, both
+  fall folds, time-to-reset, snapshot age/future detection, and derived
+  windows. The review example evaluates to `11/23` progress,
+  `pace_delta ~= 0.0717391304`, and `OVER`.
 
-### Timing and UNKNOWN semantics
+### Exact state thresholds
 
-- Valid start/reset computes clamped progress directly.
-- Missing start plus reset and positive normalized `window_seconds` derives a
-  start and records `timing_source=derived_window_seconds`.
-- Reset-only pools do not fabricate a start and remain UNKNOWN for pace, but
-  can report remaining quota, reset time, and daily allocation.
-- Start-only/no-timing/zero-length timing remains UNKNOWN with explicit
-  warnings.
-- Unknown `kind`/`scope` alone does not discard otherwise safe calculations.
+- Removed tolerance/`math.isclose` logic from state classification.
+- Direct comparisons now exactly implement the documented inclusive/exclusive
+  boundaries at `-0.20`, `-0.07`, `0.07`, and `0.20`.
+- `math.nextafter()` tests exercise the immediate representable float on both
+  sides of every threshold.
 
-### Policy and allocation
+### Strict policy configuration
 
-- Reserve defaults to 10%, constrained to `[0, 1)`.
-- Configurable state thresholds implement VERY_UNDER/UNDER/ON_TRACK/OVER/
-  CRITICAL; UNKNOWN has no pressure.
-- Pressure defaults are `0.00/0.15/0.35/0.70/1.00` and configurable.
-- Daily allocation uses explicit IANA timezone (default UTC), configurable
-  weekday weights, inclusive current/reset dates, and deterministic midnight
-  reset handling. No hourly optimizer exists.
-- Multi-window pressure is the maximum known pressure. Tie-break is pressure
-  descending, remaining ascending, pool ID ascending. UNKNOWN pools remain
-  visible and do not become the maximum automatically.
+- `BudgetConfig` and `WeekdayWeights` now use strict Pydantic validation with
+  `extra="forbid"` while remaining frozen.
+- Numeric strings, booleans/floats supplied as integers, unknown keys, typo
+  keys, invalid timezone/order/weights, NaN, and infinity are rejected.
+- Intentional YAML/environment conversion remains the responsibility of a
+  future config-loader boundary.
 
-### Staleness, service, and CLI
+### O(1) calendar allocation
 
-- Default stale threshold is 900 seconds. Stale and future-captured snapshots
-  return reports with prominent warnings; the engine never refreshes data.
-- Added `BudgetService`: latest repository snapshot -> pure evaluation.
-- Added `quotapilot budget` and `quotapilot budget --json`.
-- Human output renders unknown calculations as `unavailable`/`UNKNOWN`.
-- JSON is the Pydantic `BudgetReport`; it excludes account ID, plan name, raw
-  observation metadata, credentials, and routing advice.
+- Daily allocation no longer constructs one `date` per remaining day.
+- Total weight is complete weeks times the seven-day sum plus at most six
+  remainder weekdays; runtime is independent of reset distance.
+- Existing current-day, reset-day, midnight, timezone, and weight semantics
+  are unchanged. Tests cover 7/30-day intervals, a brute-force reference,
+  multi-year resets, `datetime.max`, and multiple pools.
 
-## Test coverage and verification
+## Verification
 
 Commands run from the repository root:
 
@@ -75,62 +67,47 @@ Commands run from the repository root:
 uv run pytest
 uv run ruff check .
 uv run pyright
-uv run quotapilot --help
 uv run quotapilot budget --help
 QUOTAPILOT_INTEGRATION=1 uv run pytest tests/integration/
 ```
 
 Results:
 
-- Offline/default pytest: **238 passed, 5 skipped**. The five skips are the
+- Offline/default pytest: **256 passed, 5 skipped**. The skips are the
   explicitly gated authenticated integration suite.
+- Focused Budget Engine tests: **63 passed**.
 - Ruff: **All checks passed**.
 - Pyright: **0 errors, 0 warnings, 0 informations**.
-- Root and budget CLI help: **PASS**.
-- Live integration: **5 passed**. Existing live capture -> temporary SQLite
-  -> privacy-safe reload now also evaluates a BudgetReport and verifies report
-  bounds. Unknown timing remains acceptable; no semantic fallback was added to
-  improve live appearance.
-
-New deterministic coverage includes:
-
-- beginning/midpoint/near-reset/before-start/after-reset/zero-length windows,
-- reset-only/start-only/no-timing and derived starts,
-- reserve and exact state-threshold boundaries,
-- equal/unequal weekday weights, final/partial/midnight reset days,
-- both directions of short-window/weekly binding, UNKNOWN+known pools, ties,
-- fresh/stale/future snapshots and repeated-input determinism,
-- save -> reload -> evaluate equivalence,
-- human/JSON CLI, no-data behavior, and JSON privacy.
+- Budget CLI help: **PASS**.
+- Live integration: **5 passed**. Live capture -> temporary SQLite -> reload
+  -> BudgetReport remains successful; no provider semantics were changed to
+  make live results appear richer.
 
 Normal CI remains offline and credential-free.
 
 ## Privacy/security state
 
-- Phase 3.1 account pseudonymization remains unchanged.
-- Budget code cannot access provider auth/transport or raw metadata.
-- `BudgetReport` has no account or plan field; CLI tests assert private
-  account/plan values are absent from JSON.
-- No live provider values, credentials, cookies, or auth files were written or
-  printed by Phase 4 tests.
+- Phase 3.1 account pseudonymization and provider redaction are unchanged.
+- Budget code still imports no provider, RPC, auth, or SQLite implementation.
+- No account identifiers, live telemetry, credentials, cookies, or auth files
+  were added or printed by Phase 4.1.
+- No model/effort recommendation, scoring, escalation, or automatic routing
+  code exists.
 
 ## Remaining risks / deferred decisions
 
-- `window_seconds` correctness is owned by provider normalization. The engine
-  consumes a positive normalized duration but never infers one from names or
-  past observations.
-- Default calendar timezone is UTC. Loading user YAML/config precedence is a
-  separate configuration-layer task; CLI flags already expose timezone,
-  reserve, and staleness policy.
-- Phase 4 evaluates the latest point-in-time snapshot. Historical trend-based
-  forecasting remains future work.
-- A reset-only pool can receive a daily allocation but intentionally cannot
-  receive known pace pressure.
+- `window_seconds` correctness remains owned by provider normalization; the
+  engine treats a positive normalized duration as elapsed seconds.
+- Calendar timezone defaults to UTC. YAML/environment config loading and
+  precedence remain future configuration-layer work.
+- Historical trend forecasting remains future work; Phase 4 evaluates the
+  latest coherent point-in-time snapshot.
+- Reset-only pools intentionally have no pace pressure even though they may
+  receive a calendar-day allocation.
 - Long-lived versus ephemeral Codex app-server lifecycle remains deferred.
 
 ## Next task
 
 Phase 5 may implement provider-independent routing using
-`BudgetReport.effective_pressure` and normalized capabilities. It must not
-import provider RPC or SQLite internals and must keep UNKNOWN pressure explicit.
-No model recommendation, effort selection, scoring, or escalation exists yet.
+`BudgetReport.effective_pressure` and normalized capabilities. It must keep
+UNKNOWN pressure explicit and must not import provider RPC or SQLite internals.

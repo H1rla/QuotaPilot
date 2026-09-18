@@ -642,7 +642,8 @@ For a quota period starting at `t0` and resetting at `tr`:
 Pt = (t - t0) / (tr - t0)
 ```
 
-Clamp to `[0, 1]`.
+Normalize `t`, `t0`, and `tr` to UTC instants before subtraction, then clamp
+to `[0, 1]`. Local wall-clock arithmetic is not valid across DST transitions.
 
 Expected usable consumption:
 
@@ -708,6 +709,9 @@ calendar day counts as one full weighted day. A reset date is included unless
 the reset occurs exactly at local midnight. Reset-only pools may receive a
 daily allocation, but their expected usage and pace state remain `UNKNOWN`
 because no start is fabricated.
+
+Calendar weights are summed in O(1): complete weeks are multiplied by the
+seven-day weight sum and only the remaining partial week is inspected.
 
 ### 13.4 Underuse matters
 

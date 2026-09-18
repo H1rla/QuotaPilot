@@ -726,3 +726,37 @@ roadmap listed a CLI-dashboard phase before routing; Phase 4 now includes the
 initial budget CLI, so status/doctor/history can be combined with later CLI
 advisor work without blocking the routing engine. No routing/scoring/
 escalation code was added here.
+
+---
+
+## 2026-09-18 — Phase 4.1: instant-safe time and strict budget policy
+
+**Context**: Independent review found that Python can subtract two aware
+datetimes sharing one `ZoneInfo` as wall-clock values across DST transitions,
+that tolerance-based state classification contradicted the contract's exact
+inequalities, that policy models accepted coercion/typos, and that calendar
+allocation scaled linearly with the reset distance.
+
+### UTC instants versus local calendar semantics
+
+**Decision**: Every elapsed-time and ordering operation first converts its
+operands to UTC. Window progress/duration, time-to-reset, snapshot age,
+future/before/after checks, and `window_seconds` start derivation therefore
+operate on instants. Only weekday/date bucket selection converts those
+instants into the configured calendar timezone.
+
+### Exact thresholds and strict policy input
+
+**Decision**: Budget state uses direct ordered comparisons matching the
+published inclusive/exclusive boundaries. No epsilon, `isclose`, rounding, or
+quantization is applied. `BudgetConfig` and `WeekdayWeights` are strict,
+frozen models with `extra="forbid"`; intentional string parsing belongs at a
+future config-loader boundary rather than inside quota policy.
+
+### Constant-time calendar allocation
+
+**Decision**: Remaining weekday weight is computed as complete weeks plus an
+at-most-six-day remainder. This preserves the existing inclusive current/reset
+date and midnight rules while making runtime independent of the number of
+remaining days. Weight normalization remains scale-invariant and avoids
+overflow for large finite weights.
