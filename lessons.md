@@ -43,3 +43,13 @@ useful for calendars but wrong for quota durations and stale-age checks.
 **Rule going forward**: Convert both operands to UTC before elapsed-time or
 ordering calculations; convert to local time only for explicit calendar-day
 semantics.
+
+## 2026-09-18 — Missing capability metadata is not a model tier
+**What happened**: Provider discovery exposes model IDs and effort strings but
+does not currently provide QuotaPilot's relative power/cost/latency or prove
+that arbitrary effort names are ranked.
+**Why**: Inferring either from names would make routing brittle and silently
+provider-specific.
+**Rule going forward**: Preserve unknown candidates, require explicit power and
+normalized effort order for ranking, and surface a typed no-route result until
+an external capability definition supplies trustworthy metadata.

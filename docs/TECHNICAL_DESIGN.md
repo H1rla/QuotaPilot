@@ -276,7 +276,8 @@ class AIModel(BaseModel):
     family: str | None = None
 
     selectable: bool = True
-    supported_efforts: list[str] = []
+    supported_efforts: tuple[str, ...] = ()
+    effort_order: tuple[str, ...] | None = None
 
     relative_power: float | None = None
     relative_cost: float | None = None
@@ -286,6 +287,9 @@ class AIModel(BaseModel):
 ```
 
 `relative_*` fields are QuotaPilot routing heuristics, not official provider specifications.
+`effort_order`, when present, is the normalized least-to-greatest order and
+must contain every supported effort exactly once. An unordered catalog is
+preserved but cannot drive an effort recommendation.
 
 ### 6.3 CapabilitySet
 
@@ -819,6 +823,19 @@ Clamp to `[0, 1]`.
 
 ## 16. Routing model
 
+**Implemented in Phase 5.** `docs/PHASE5_ROUTING_CONTRACT.md` is normative;
+this section retains the high-level model. The pure engine consumes
+`TaskProfile + BudgetReport + CapabilitySet + RoutingPolicy` and never reads a
+provider, database, environment, or clock. It excludes selectable models with
+unknown power rather than inferring tiers from IDs, uses explicit neutral
+fallbacks for unknown cost/latency, and surfaces every score component.
+
+The capability floor is enforced before utility scoring. Unknown quota uses a
+policy fallback while remaining labeled unknown. Effort is selected only from
+an explicit normalized `effort_order`; escalation and alternatives are
+advisory and capability-driven. Initial coefficients are deterministic and
+explainable but not empirically calibrated.
+
 Model utility concept:
 
 ```text
@@ -1286,7 +1303,7 @@ Prefer pure functions.
 
 ### Phase 5 — routing engine
 
-Implement:
+Implemented:
 
 - TaskProfile
 - complexity scoring
@@ -1295,10 +1312,14 @@ Implement:
 - recommendation
 - escalation ladder
 
-### Phase 6 — CLI dashboard and advisor
+Also exposes `quotapilot route` and `quotapilot route --json`. See
+`docs/PHASE5_ROUTING_CONTRACT.md`.
 
-Implement `status`, `doctor`, `history`, and `quotapilot route` with JSON
-output. Budget CLI output already exists from Phase 4.
+### Phase 6 — CLI dashboard and controlled integration
+
+Implement `status`, `doctor`, and `history`, then design any controlled
+execution/integration boundary separately. Budget and advisory route CLI
+output already exist from Phases 4 and 5. Phase 5 performs no execution.
 
 ### Phase 7 — desktop integration
 

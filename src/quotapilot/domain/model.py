@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Self
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class AIModel(BaseModel):
@@ -31,9 +31,21 @@ class AIModel(BaseModel):
 
     selectable: bool = True
     supported_efforts: tuple[str, ...] = Field(default_factory=tuple)
+    effort_order: tuple[str, ...] | None = None
 
     relative_power: float | None = None
     relative_cost: float | None = None
     relative_latency: float | None = None
 
     metadata: dict[str, Any] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def effort_order_matches_catalog(self) -> Self:
+        """Require an explicit complete ordering before routing can rank efforts."""
+        if self.effort_order is None:
+            return self
+        if len(set(self.effort_order)) != len(self.effort_order):
+            raise ValueError("effort_order must not contain duplicates")
+        if set(self.effort_order) != set(self.supported_efforts):
+            raise ValueError("effort_order must contain every supported effort exactly once")
+        return self

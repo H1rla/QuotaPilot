@@ -15,6 +15,7 @@ def test_cli_help() -> None:
     assert result.exit_code == 0
     assert "quotapilot" in result.output.lower()
     assert "budget" in result.output
+    assert "route" in result.output
 
 
 def test_cli_version() -> None:

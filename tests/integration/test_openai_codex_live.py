@@ -15,6 +15,9 @@ import pytest
 from quotapilot.budget.engine import BudgetEngine
 from quotapilot.history.sqlite import SqliteSnapshotRepository
 from quotapilot.providers.openai_codex.provider import OpenAICodexProvider
+from quotapilot.routing.engine import RoutingEngine
+from quotapilot.routing.errors import NoRoutableModelError
+from quotapilot.routing.profiler import TaskProfiler
 from quotapilot.services.snapshot import SnapshotService
 
 pytestmark = pytest.mark.skipif(
@@ -104,3 +107,20 @@ async def test_live_capture_save_reload_round_trip(tmp_path: Path) -> None:
         if assessment.today_budget_fraction is not None:
             assert assessment.available_fraction is not None
             assert 0.0 <= assessment.today_budget_fraction <= assessment.available_fraction
+
+    profile = TaskProfiler().profile("Review a repository change")
+    routable_models = tuple(
+        model
+        for model in reloaded.account.capabilities.models
+        if model.selectable and model.relative_power is not None
+    )
+    if not routable_models:
+        # Current Codex discovery reports models but no QuotaPilot routing
+        # heuristics. Refuse to fabricate power merely to make live routing pass.
+        with pytest.raises(NoRoutableModelError):
+            RoutingEngine().recommend(profile, report, reloaded.account.capabilities)
+    else:
+        recommendation = RoutingEngine().recommend(
+            profile, report, reloaded.account.capabilities
+        )
+        assert recommendation.selected_model_id in {model.id for model in routable_models}

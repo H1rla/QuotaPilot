@@ -760,3 +760,47 @@ at-most-six-day remainder. This preserves the existing inclusive current/reset
 date and midnight rules while making runtime independent of the number of
 remaining days. Weight normalization remains scale-invariant and avoids
 overflow for large finite weights.
+
+---
+
+## 2026-09-18 — Phase 5: capability-driven advisory routing
+
+### Routing boundary and calibration
+
+**Decision**: Phase 5 routing is a pure provider-independent function of
+`TaskProfile`, `BudgetReport`, `CapabilitySet`, and strict `RoutingPolicy`.
+Persistence/provider composition lives in `RoutingService`; task descriptions
+are never stored. Recommendations, alternatives, and escalation are advisory
+only. Coefficients are deterministic and explainable but explicitly not yet
+empirically calibrated.
+
+### Required power and capability floor
+
+**Decision**: Difficulty uses the contract's 30/20/20/15/15 weighted formula.
+Required power additionally weights failure cost and low verifiability by 0.10
+each. A risk-tightened tolerance produces a hard capability floor before
+utility scoring. Quota pressure therefore cannot make a severely underpowered
+model eligible, while a separate over-capability penalty prevents low-pressure
+trivial work from defaulting to the strongest model.
+
+### Unknown routing metadata
+
+**Decision**: Missing relative power makes a model unroutable without removing
+it from capability state or candidate explanations. Missing cost/latency uses
+an explicit neutral policy fallback of 0.50, never zero. Unknown quota uses an
+explicit 0.50 fallback and remains labeled `fallback_unknown`.
+
+`AIModel.effort_order` is an optional normalized least-to-greatest ordering.
+It must exactly cover `supported_efforts`. An unordered catalog cannot produce
+an effort recommendation; routing never orders arbitrary provider strings or
+infers model tiers from IDs. Current live Codex discovery lacks both routing
+heuristics and verified effort ordering, so it safely yields no automatic
+recommendation until an external capability definition supplies them.
+
+### Deterministic selection and escalation
+
+**Decision**: Eligible utility is inspectable quality minus quota, latency,
+and over-capability penalties. Ties use effective cost, effective latency, and
+model ID. Effort reduction under quota pressure is allowed only for low-risk,
+high-verifiability work. Escalation raises effort or moves monotonically to a
+stronger discovered candidate; it never executes or moves back down.

@@ -1,7 +1,7 @@
 """Root Typer application.
 
-Further subcommands (`status`, `route`, `history`, `doctor`, `waybar`) are
-added in later phases as their owning features are implemented.
+Further subcommands (`status`, `history`, `doctor`, `waybar`) are added in
+later phases as their owning features are implemented.
 """
 
 from __future__ import annotations
@@ -11,6 +11,7 @@ import typer
 from quotapilot import __version__
 from quotapilot.cli import snapshot
 from quotapilot.cli.budget import budget
+from quotapilot.cli.route import route
 
 app = typer.Typer(
     name="quotapilot",
@@ -19,6 +20,7 @@ app = typer.Typer(
 )
 app.add_typer(snapshot.app, name="snapshot")
 app.command("budget")(budget)
+app.command("route")(route)
 
 
 @app.callback()

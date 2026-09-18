@@ -1,4 +1,4 @@
-"""Thin glue layer: wires providers to persistence (and, later, budget/routing).
+"""Thin glue layer for provider, persistence, budget, and routing composition.
 
 No policy (budget math, routing decisions) belongs here — only orchestration
 of calls into `quotapilot.providers`/`quotapilot.history`.
