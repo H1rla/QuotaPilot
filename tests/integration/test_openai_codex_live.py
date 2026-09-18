@@ -8,10 +8,13 @@ Never prints account identifiers/emails/tokens — only shapes and ranges.
 from __future__ import annotations
 
 import os
+from pathlib import Path
 
 import pytest
 
+from quotapilot.history.sqlite import SqliteSnapshotRepository
 from quotapilot.providers.openai_codex.provider import OpenAICodexProvider
+from quotapilot.services.snapshot import SnapshotService
 
 pytestmark = pytest.mark.skipif(
     os.environ.get("QUOTAPILOT_INTEGRATION") != "1",
@@ -63,3 +66,20 @@ async def test_live_capture_usage_is_one_coherent_snapshot() -> None:
     raw_rate_limits = snapshot.metadata.get("raw_observation", {}).get("rate_limits_read", {})
     if "accountId" in raw_rate_limits and raw_rate_limits["accountId"] is not None:
         assert raw_rate_limits["accountId"] == "REDACTED"
+
+
+async def test_live_capture_save_reload_round_trip(tmp_path: Path) -> None:
+    """live capture -> temporary SQLite DB -> save -> reload -> compare."""
+    provider = OpenAICodexProvider()
+    repository = SqliteSnapshotRepository(tmp_path / "live_capture.db")
+    service = SnapshotService(provider, repository)
+
+    result = await service.capture_and_store()
+    reloaded = await repository.get_snapshot(result.id)
+
+    assert reloaded is not None
+    assert reloaded == result.snapshot
+    assert reloaded.captured_at == result.snapshot.captured_at
+    pool_ids = {p.id for p in reloaded.quota_pools}
+    for binding in reloaded.quota_bindings:
+        assert set(binding.quota_pool_ids) <= pool_ids

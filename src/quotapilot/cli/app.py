@@ -9,12 +9,14 @@ from __future__ import annotations
 import typer
 
 from quotapilot import __version__
+from quotapilot.cli import snapshot
 
 app = typer.Typer(
     name="quotapilot",
     help="Local usage-management and model-routing assistant for AI coding tools.",
     no_args_is_help=True,
 )
+app.add_typer(snapshot.app, name="snapshot")
 
 
 @app.callback()

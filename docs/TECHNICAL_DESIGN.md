@@ -458,62 +458,96 @@ Never present stale data as live.
 
 ## 11. Persistence
 
-Use SQLite.
+Use SQLite via `aiosqlite`.
 
-Default path should be provided by `platformdirs`, conceptually:
+Default path is provided by `platformdirs` (never a hardcoded home
+directory), conceptually:
 
 ```text
 $XDG_DATA_HOME/quotapilot/quotapilot.db
 ```
 
-Core tables:
+**Implemented in Phase 3** (see `src/quotapilot/history/`,
+`docs/PHASE3_PERSISTENCE_CONTRACT.md`, and the corresponding
+`docs/DECISIONS.md` entry — this supersedes the earlier `quota_snapshots`/
+`model_catalog`/`routing_decisions`/`task_feedback` sketch that was written
+before any provider existed to feed it):
 
-- accounts
-- quota_snapshots
-- quota_pool_samples
-- model_catalog
-- routing_decisions
-- task_feedback
+The only canonical persistence input is
+`UsageSnapshot` obtained from `await provider.capture_usage()` — never a
+snapshot assembled from independent `get_account()`/`get_quota_pools()`/
+`get_quota_bindings()` calls, which are not guaranteed mutually coherent.
 
-Minimal starting schema:
+Hybrid schema: normalized columns for common queryable fields, plus the
+complete serialized snapshot/pool/binding for full-fidelity reconstruction
+and preservation of unknown/future fields. Schema version `1`:
 
 ```sql
-CREATE TABLE quota_snapshots (
+CREATE TABLE schema_version (version INTEGER NOT NULL);
+
+CREATE TABLE snapshots (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     provider TEXT NOT NULL,
     account_key TEXT,
+    plan_name TEXT,
     captured_at TEXT NOT NULL,
-    raw_json TEXT
+    snapshot_json TEXT NOT NULL,
+    created_at TEXT NOT NULL
 );
-```
 
-```sql
 CREATE TABLE quota_pool_samples (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     snapshot_id INTEGER NOT NULL,
     pool_id TEXT NOT NULL,
+    provider TEXT NOT NULL,
+    kind TEXT NOT NULL,
+    scope TEXT NOT NULL,
     used_fraction REAL,
     remaining_fraction REAL,
+    starts_at TEXT,
     resets_at TEXT,
-    FOREIGN KEY(snapshot_id)
-        REFERENCES quota_snapshots(id)
+    window_seconds INTEGER,
+    pool_json TEXT NOT NULL,
+    FOREIGN KEY(snapshot_id) REFERENCES snapshots(id) ON DELETE CASCADE
 );
-```
 
-```sql
-CREATE TABLE routing_decisions (
+CREATE TABLE quota_binding_samples (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    created_at TEXT NOT NULL,
-    task_summary TEXT,
-    recommended_model TEXT,
-    recommended_effort TEXT,
-    quota_pressure REAL,
-    complexity REAL,
-    explanation TEXT
+    snapshot_id INTEGER NOT NULL,
+    model_id TEXT NOT NULL,
+    reasoning_effort TEXT,
+    confidence TEXT NOT NULL,
+    binding_json TEXT NOT NULL,
+    FOREIGN KEY(snapshot_id) REFERENCES snapshots(id) ON DELETE CASCADE
 );
 ```
 
-Do not over-design migrations in Phase 0–2. Introduce a minimal migration mechanism before schema evolution begins.
+`account_key` mirrors `AccountInfo.account_id` verbatim (not a new
+identifier, not re-redacted): that field is already the sanctioned,
+never-redacted structured value inside `UsageSnapshot`, kept local-only in
+SQLite. It is nullable — persistence must never invent an identity a
+provider doesn't supply.
+
+`snapshot_json`/`pool_json`/`binding_json` come from
+`model_dump(mode="json", round_trip=True)` — a defensive serialized copy,
+never a live reference to a snapshot's (only shallowly immutable)
+`metadata` dicts. Reads always go back through `UsageSnapshot.model_validate`
+— stored JSON is never trusted as inherently valid.
+
+Saving one snapshot (parent row + all pool rows + all binding rows) is one
+SQLite transaction: all rows commit together or none do. Before writing,
+persistence re-validates snapshot coherence (bindings reference only pools
+in the same snapshot; `captured_at` is timezone-aware; every pool's
+`provider` matches `account.provider`) even though the provider boundary is
+already expected to guarantee it — defense in depth, not trust.
+
+`schema_version` holds one row; `ensure_schema()` initializes a fresh
+database, no-ops on a database already at the current version, and raises
+`DatabaseInitializationError` clearly for any other version (no migration
+framework — add a version-specific branch when version 2 is needed).
+
+Do not over-design migrations beyond this. Introduce a heavier migration
+mechanism only once schema evolution actually begins.
 
 ---
 

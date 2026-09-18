@@ -489,3 +489,105 @@ observation. `get_account()`, `get_quota_pools()`, and
 `get_quota_bindings()` each delegate to a separate capture when called
 individually, so sequential getter calls are not mutually atomic and must not
 be used by persistence.
+
+---
+
+## 2026-09-18 — Phase 3: snapshot persistence
+
+**Context**: `docs/PHASE3_PERSISTENCE_CONTRACT.md` (written for this phase)
+specifies the persistence boundary in detail; this entry records the
+concrete choices made implementing it and anything not fully determined by
+that contract.
+
+**Package layout**: `src/quotapilot/history/` — `repository.py`
+(provider-independent `SnapshotRepository` Protocol), `sqlite.py`
+(`SqliteSnapshotRepository`), `migrations.py` (`ensure_schema`,
+`CURRENT_SCHEMA_VERSION = 1`), `errors.py` (`PersistenceError` and
+subclasses). None of these import any `quotapilot.providers` module —
+verified by inspection, not just convention. `src/quotapilot/services/snapshot.py`
+adds `SnapshotService.capture_and_store()` — the only place that calls both
+a provider and a repository — plus `StoredSnapshot` (id + the exact
+snapshot persisted).
+
+**Schema**: hybrid normalized + full-JSON, as specified — `snapshots`
+(parent row, full `snapshot_json`), `quota_pool_samples`,
+`quota_binding_samples` (both `ON DELETE CASCADE`), `schema_version`
+(single row). Added two indexes not in the contract's sketch —
+`(provider, captured_at)` on `snapshots` and `snapshot_id` on both child
+tables — purely to match the query patterns `get_latest_snapshot`/
+`list_snapshots`/cascade-delete already need; not a speculative addition.
+
+**`account_key` decision**: populated verbatim from
+`AccountInfo.account_id` (nullable, pass-through — never a new identifier,
+never un-redacting anything). Reasoning: `account_id` is already the
+sanctioned, never-redacted structured field inside the sanitized
+`UsageSnapshot` (only the separate `raw_observation` envelope redacts the
+same value) — persistence merely mirrors data already legitimately present
+in what it's given, it does not introduce a new exposure. Storage is local
+SQLite only (design §22 "keep local analysis local by default"), so this
+does not conflict with "do not persist raw sensitive account identifiers
+unless required" / "if the current redaction layer already sanitizes it,
+do not reverse that sanitization" — that guidance is about not pulling the
+value back out of the *redacted* copy, which this doesn't do.
+
+**Defensive serialization**: every write uses
+`model.model_dump(mode="json", round_trip=True)` before `json.dumps(...)` —
+never a live reference to a snapshot's `metadata` dict. Every read goes
+through `UsageSnapshot.model_validate(json.loads(...))` — stored JSON is
+never trusted as inherently valid; a corrupted or hand-edited row surfaces
+as `SnapshotReadError`, not a silently-wrong domain object.
+
+**Transaction shape**: one `BEGIN` / `COMMIT` (or `ROLLBACK` on any
+exception) per `save_snapshot()` call, covering the parent row and every
+pool/binding child row. Implemented as three private helper methods
+(`_insert_snapshot_row`, `_insert_pool_samples`, `_insert_binding_samples`)
+specifically so tests can monkeypatch one of them to simulate a
+mid-transaction child-write failure without needing a contrived SQL-level
+constraint violation — verified this leaves zero rows in `snapshots` after
+a forced failure (`test_child_write_failure_leaves_no_partial_snapshot`).
+
+**Coherence re-validation at the persistence boundary**: `save_snapshot()`
+checks — before opening any transaction — that (1) `captured_at` is
+timezone-aware, (2) every binding's `quota_pool_ids` reference only pools
+in the same snapshot, and (3) every pool's `provider` matches
+`account.provider`. (1) is currently unreachable in practice (`AwareDatetime`
+already guarantees it at construction), kept anyway as defense-in-depth per
+the contract's explicit ask, in case a future domain change ever loosens
+that guarantee. Violations raise `SnapshotCoherenceError` and are rejected
+outright — never silently repaired, never partially written.
+
+**Timestamp storage**: every stored timestamp (`captured_at`, `created_at`,
+pool `starts_at`/`resets_at`) is normalized to UTC
+(`value.astimezone(UTC).isoformat()`) before being written as `TEXT`. This
+is not just cosmetic: it guarantees `ORDER BY captured_at` produces correct
+chronological ordering via plain lexicographic string comparison,
+regardless of what timezone offset a future provider might capture in —
+without normalization, two snapshots captured in different UTC offsets
+could sort incorrectly by raw ISO-8601 string comparison.
+
+**Ordering tie-break**: `ORDER BY captured_at DESC, id DESC` (not
+`captured_at` alone) for `get_latest_snapshot`/`list_snapshots`, so
+insertion order breaks ties deterministically when two captures share a
+timestamp (verified by a test that intentionally inserts out of
+chronological order and confirms `id` ordering doesn't leak through
+incorrectly when timestamps differ, and that timestamp ordering wins over
+insertion order when they conflict).
+
+**No deduplication**: intentionally no `UNIQUE` constraint of any kind on
+snapshot content — per the contract, identical quota state captured at two
+different times is meaningful historical data, not a duplicate to collapse.
+
+**CLI (optional, kept minimal)**: added `quotapilot snapshot capture` and
+`quotapilot snapshot latest` (`src/quotapilot/cli/snapshot.py`). Neither
+prints `account_id` or any `metadata` envelope by default — only provider,
+plan name, capture time, and per-pool kind/scope/used-fraction — a
+conservative choice for a first pass at user-facing output, not a
+statement that `account_id` is newly sensitive (see `account_key` decision
+above). No budget/pace/routing output; `snapshot latest` exits `1` with a
+plain message when nothing is stored yet.
+
+**Not implemented / explicitly deferred**: budget engine, pace/reserve/
+daily-allocation math, model routing — untouched, per design §25 phase
+ordering and this phase's explicit scope guard. `account/usage/read`
+history data still has no persistence path (it already had no domain
+mapping — see the Phase 2.1 entry above).

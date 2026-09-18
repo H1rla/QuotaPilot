@@ -1,0 +1,50 @@
+"""Typed errors for the snapshot persistence boundary.
+
+Kept distinguishable so callers don't need to inspect raw `aiosqlite`/
+`sqlite3` exceptions (which this layer does not otherwise expose).
+"""
+
+from __future__ import annotations
+
+
+class PersistenceError(Exception):
+    """Base for all snapshot-persistence errors."""
+
+
+class DatabaseInitializationError(PersistenceError):
+    """The database could not be opened or its schema could not be established.
+
+    Covers: the database directory/file could not be created or opened, and
+    schema-version mismatches this build cannot handle (a newer schema than
+    this code understands, or an older one with no migration path yet).
+    """
+
+
+class SnapshotSerializationError(PersistenceError):
+    """A `UsageSnapshot` (or its pools/bindings) could not be serialized."""
+
+
+class SnapshotCoherenceError(PersistenceError):
+    """A snapshot failed the persistence-boundary coherence check.
+
+    Raised before any write happens — the provider is expected to already
+    guarantee this (see `UsageProvider.capture_usage`), but persistence
+    re-validates rather than trusting that silently. Never repaired
+    automatically; an incoherent snapshot is rejected outright.
+    """
+
+
+class SnapshotWriteError(PersistenceError):
+    """Writing a snapshot (and its pool/binding rows) failed.
+
+    The underlying transaction is guaranteed rolled back before this is
+    raised — there is never a partially-committed snapshot.
+    """
+
+
+class SnapshotReadError(PersistenceError):
+    """A stored snapshot could not be read back as a valid `UsageSnapshot`.
+
+    Covers malformed stored JSON and JSON that no longer validates against
+    the current domain model.
+    """
