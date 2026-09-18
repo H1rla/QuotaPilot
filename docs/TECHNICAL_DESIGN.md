@@ -622,6 +622,12 @@ Configuration precedence:
 
 ## 13. Budget concepts
 
+**Implemented in Phase 4.** The normative behavior, including conservative
+missing-timing rules, deterministic calendar-day allocation, staleness, and
+the provider-neutral report schema, is defined in
+`docs/PHASE4_BUDGET_CONTRACT.md`. This section is a summary; the Phase 4
+contract wins if an older example here is less precise.
+
 Maintain separate concepts:
 
 - actual usage `U(t)`
@@ -676,7 +682,8 @@ CRITICAL:    D > 0.20
 
 ### 13.3 Daily budget
 
-Remaining quota:
+Remaining quota prefers `QuotaPool.remaining_fraction`; only when it is absent
+may it be derived from the normalized `used_fraction`:
 
 ```text
 Qr = 1 - U(t)
@@ -695,6 +702,12 @@ Bi = Qa * wi / sum(wj)
 ```
 
 Today's suggested quota is `B_today`.
+
+Phase 4 uses an explicit configured IANA timezone (default `UTC`). The current
+calendar day counts as one full weighted day. A reset date is included unless
+the reset occurs exactly at local midnight. Reset-only pools may receive a
+daily allocation, but their expected usage and pace state remain `UNKNOWN`
+because no start is fabricated.
 
 ### 13.4 Underuse matters
 
@@ -731,6 +744,11 @@ effective_pressure = max(pool_pressures)
 ```
 
 Do not average in v0.1.
+
+Pools with insufficient pace semantics remain visible with `UNKNOWN` state and
+`pressure=None`; they do not automatically override evaluable pools. Binding
+ties are deterministic: pressure descending, remaining fraction ascending,
+then pool ID ascending.
 
 Suggested mapping from state to normalized quota pressure:
 
@@ -922,6 +940,7 @@ Escalation:
 Required commands:
 
 ```text
+quotapilot budget
 quotapilot status
 quotapilot route
 quotapilot history
@@ -1256,17 +1275,12 @@ Implement:
 - daily allocation
 - multi-window pressure
 
+Also expose `quotapilot budget` and `quotapilot budget --json` over the latest
+persisted snapshot. See `docs/PHASE4_BUDGET_CONTRACT.md`.
+
 Prefer pure functions.
 
-### Phase 5 — CLI dashboard
-
-Implement:
-
-- status
-- doctor
-- history
-
-### Phase 6 — routing engine
+### Phase 5 — routing engine
 
 Implement:
 
@@ -1277,15 +1291,16 @@ Implement:
 - recommendation
 - escalation ladder
 
-### Phase 7 — CLI advisor
+### Phase 6 — CLI dashboard and advisor
 
-Implement `quotapilot route` and JSON output.
+Implement `status`, `doctor`, `history`, and `quotapilot route` with JSON
+output. Budget CLI output already exists from Phase 4.
 
-### Phase 8 — desktop integration
+### Phase 7 — desktop integration
 
 Implement `quotapilot waybar`.
 
-### Phase 9 — observation period
+### Phase 8 — observation period
 
 Run recommendation-only mode and record:
 

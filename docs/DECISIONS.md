@@ -655,3 +655,74 @@ duplicate pool IDs, duplicate pool references within a binding, capability
 models whose provider differs from the account provider, pool-provider
 mismatches, dangling binding references, and non-aware capture timestamps.
 It never deduplicates or repairs an incoherent snapshot.
+
+---
+
+## 2026-09-18 — Phase 4: conservative provider-independent budgeting
+
+**Contract**: `docs/PHASE4_BUDGET_CONTRACT.md` is the normative Phase 4
+specification. `src/quotapilot/budget/` depends only on normalized domain
+objects and never imports provider, transport, persistence, or plan-specific
+code. `BudgetEngine.evaluate(snapshot, now=...)` is pure for fixed inputs.
+
+### Timing is field-eligible, not kind-inferred
+
+**Decision**: A positive normalized period is evaluable when start/reset are
+present, or when reset plus a positive `window_seconds` permits the engine to
+derive a start. The latter is labeled `derived_window_seconds`. Unknown
+`QuotaPool.kind` or `scope` does not by itself invalidate otherwise sufficient
+numeric timing, and the engine never upgrades either field to a guessed value.
+
+This is deliberately more conservative than the older design examples that
+could be read as assuming every reset implied a weekly/fixed window. A
+reset-only pool receives no expected usage, pace delta, state pressure, or
+fabricated start. It can still report time-to-reset and split currently
+available quota across remaining calendar days because those operations need
+only a reset boundary.
+
+`timing_source=start_reset` means the engine consumed normalized start/reset
+fields; it does not claim the provider directly reported the start. Provider
+fact/inference provenance remains in `QuotaPool.metadata`.
+
+### Reserve, remaining quota, and calendar-day allocation
+
+**Decision**: Reserve defaults to 10% of total quota and is policy, not
+provider truth. Remaining quota prefers the normalized reported value and is
+derived as `1 - used_fraction` only when the reported value is absent. A
+reported used/remaining inconsistency is preserved with a warning rather than
+silently repaired.
+
+Daily allocation uses configured IANA timezone `UTC` by default. The partial
+current day counts as one whole weighted day; a reset day counts unless reset
+is exactly local midnight. This intentionally avoids hidden system-local time
+and hourly optimization in v0.1. Reset-at-or-before-now yields zero daily
+budget; a period known to start in the future yields no current-day budget.
+
+### UNKNOWN pools and multi-window pressure
+
+**Decision**: Every pool produces an assessment. Missing usage or pace timing
+produces `BudgetState.UNKNOWN` and `pressure=None`, not an exception. Effective
+pressure is the maximum known pressure. Deterministic binding ties use
+pressure descending, remaining fraction ascending (`None` last), then pool ID
+ascending. No averaging and no model recommendation occurs in Phase 4.
+
+### Stale data, composition, and output privacy
+
+**Decision**: The default stale threshold is 900 seconds. Stale and
+future-captured snapshots still return reports but carry explicit warnings;
+the pure engine never refreshes. `BudgetService` performs only repository
+latest-read followed by evaluation. No stored snapshot returns `None` and the
+CLI reports that condition explicitly.
+
+`BudgetReport` JSON contains quota assessment fields only. It excludes account
+ID, plan, raw metadata, and provider transport observations. The
+`quotapilot budget` command reads persisted state and supports `--json`; it
+does not call a provider.
+
+### Roadmap clarification
+
+**Decision**: The next implementation phase is Phase 5 routing. The older
+roadmap listed a CLI-dashboard phase before routing; Phase 4 now includes the
+initial budget CLI, so status/doctor/history can be combined with later CLI
+advisor work without blocking the routing engine. No routing/scoring/
+escalation code was added here.

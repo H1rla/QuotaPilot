@@ -17,3 +17,20 @@ the declared schema shape.
 **Rule going forward**: Treat schema version state as an integrity assertion:
 require exactly one integer row and validate the required tables/columns before
 using an existing database.
+
+## 2026-09-18 — Unknown quota semantics should degrade per calculation
+**What happened**: Codex exposes useful normalized percentages, durations, and
+reset times while leaving window kind and non-model scope undocumented.
+**Why**: Treating the whole pool as either fully known or fully unusable would
+discard safe calculations or invent unsupported semantics.
+**Rule going forward**: Determine eligibility field by field. Report safe
+remaining/time/daily values when their inputs exist, but keep expected pace,
+state, and pressure UNKNOWN whenever their specific prerequisites are absent.
+
+## 2026-09-18 — Calendar allocation needs explicit boundary rules
+**What happened**: “Divide by remaining days” is ambiguous for partial current
+days and reset-at-midnight timestamps.
+**Why**: Hidden local-time and partial-day assumptions make tests and user
+budgets non-deterministic.
+**Rule going forward**: Use an explicit configured timezone and document
+whether current/reset dates count before implementing calendar-based policy.

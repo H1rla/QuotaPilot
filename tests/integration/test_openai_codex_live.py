@@ -12,6 +12,7 @@ from pathlib import Path
 
 import pytest
 
+from quotapilot.budget.engine import BudgetEngine
 from quotapilot.history.sqlite import SqliteSnapshotRepository
 from quotapilot.providers.openai_codex.provider import OpenAICodexProvider
 from quotapilot.services.snapshot import SnapshotService
@@ -94,3 +95,12 @@ async def test_live_capture_save_reload_round_trip(tmp_path: Path) -> None:
     pool_ids = {p.id for p in reloaded.quota_pools}
     for binding in reloaded.quota_bindings:
         assert set(binding.quota_pool_ids) <= pool_ids
+
+    report = BudgetEngine().evaluate(reloaded, now=reloaded.captured_at)
+    assert len(report.pools) == len(reloaded.quota_pools)
+    for assessment in report.pools:
+        if assessment.pressure is not None:
+            assert 0.0 <= assessment.pressure <= 1.0
+        if assessment.today_budget_fraction is not None:
+            assert assessment.available_fraction is not None
+            assert 0.0 <= assessment.today_budget_fraction <= assessment.available_fraction
