@@ -5,15 +5,9 @@ import "I18n.js" as I18n
 import "Tokens.js" as Tokens
 import "components"
 
-ScrollView {
+PageScrollView {
     id: page
-    clip: true
-    contentWidth: availableWidth
-    ColumnLayout {
-        width: page.availableWidth - Tokens.space.xl * 2
-        x: Tokens.space.xl
-        y: Tokens.space.xl
-        spacing: Tokens.space.lg
+    contentSpacing: Tokens.space.lg
         Text { text: qsTranslate("Global", "Route"); color: Tokens.color.textPrimary; font.family: Tokens.font.ui; font.pixelSize: Tokens.type.title; font.weight: Font.DemiBold }
         Text { text: qsTranslate("Global", "What are you working on?"); color: Tokens.color.textSecondary; font.family: Tokens.font.ui; font.pixelSize: Tokens.type.body }
         TextArea {
@@ -73,17 +67,37 @@ ScrollView {
             visible: routeViewModel.hasResult
             Layout.fillWidth: true; spacing: Tokens.space.md
             Rectangle { Layout.fillWidth: true; implicitHeight: 1; color: Tokens.color.border }
-            SectionHeader { text: qsTranslate("Global", "Task profile") }
+            SectionHeader { text: qsTranslate("Global", "Recommended") }
+            Text { text: routeViewModel.result.model + " · " + qsTranslate("Global", routeViewModel.result.effort); color: Tokens.color.textPrimary; font.family: Tokens.font.mono; font.pixelSize: 22; font.weight: Font.DemiBold }
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: Tokens.space.xl
+                MetricLine { Layout.fillWidth: true; label: qsTranslate("Global", "Task class"); value: routeViewModel.result.taskClass }
+                MetricLine { Layout.fillWidth: true; label: qsTranslate("Global", "Confidence"); value: routeViewModel.result.confidence; translateValue: true }
+                MetricLine { Layout.fillWidth: true; label: qsTranslate("Global", "Quota pressure"); value: routeViewModel.result.pressureText }
+            }
+            Repeater {
+                model: appController.detailsVisible
+                       ? (routeViewModel.result.explanation || [])
+                       : (routeViewModel.result.explanation || []).slice(0, 3)
+                delegate: Text { required property var modelData; text: "✓  " + I18n.format(modelData); color: Tokens.color.textSecondary; font.family: Tokens.font.ui; font.pixelSize: Tokens.type.body; wrapMode: Text.Wrap; Layout.fillWidth: true }
+            }
+            Text {
+                visible: !appController.detailsVisible && (routeViewModel.result.explanation || []).length > 3
+                text: "Ctrl+D  ·  " + qsTranslate("Global", "Toggle details")
+                color: Tokens.color.textMuted
+                font.family: Tokens.font.mono
+                font.pixelSize: Tokens.type.caption
+            }
+            SectionHeader { visible: appController.detailsVisible; text: qsTranslate("Global", "Task profile") }
             GridLayout {
+                visible: appController.detailsVisible
                 Layout.fillWidth: true; columns: page.width >= 760 ? 4 : 2
                 MetricLine { label: qsTranslate("Global", "Complexity"); value: routeViewModel.result.profile.complexity.toFixed(2) }
                 MetricLine { label: qsTranslate("Global", "Ambiguity"); value: routeViewModel.result.profile.ambiguity.toFixed(2) }
                 MetricLine { label: qsTranslate("Global", "Failure cost"); value: routeViewModel.result.profile.failureCost.toFixed(2) }
                 MetricLine { label: qsTranslate("Global", "Verifiability"); value: routeViewModel.result.profile.verifiability.toFixed(2) }
             }
-            SectionHeader { text: qsTranslate("Global", "Recommended") }
-            Text { text: routeViewModel.result.model + " · " + qsTranslate("Global", routeViewModel.result.effort); color: Tokens.color.textPrimary; font.family: Tokens.font.mono; font.pixelSize: 22; font.weight: Font.DemiBold }
-            Repeater { model: routeViewModel.result.explanation || []; delegate: Text { required property var modelData; text: "✓  " + I18n.format(modelData); color: Tokens.color.textSecondary; font.family: Tokens.font.ui; font.pixelSize: Tokens.type.body; wrapMode: Text.Wrap; Layout.fillWidth: true } }
             SectionHeader { text: qsTranslate("Global", "Escalation") }
             Text { text: (routeViewModel.result.escalation || []).map(function(item) { return item.model + " · " + item.effort }).join("  →  ") || qsTranslate("Global", "None"); color: Tokens.color.textSecondary; font.family: Tokens.font.mono; font.pixelSize: Tokens.type.body; wrapMode: Text.Wrap; Layout.fillWidth: true }
             RowLayout {
@@ -92,5 +106,4 @@ ScrollView {
                 FlatButton { primary: true; text: qsTranslate("Global", "Execute"); onClicked: { executeViewModel.prepare(taskInput.text, appController.workingDirectory, false); appController.navigate("Execute") } }
             }
         }
-    }
 }

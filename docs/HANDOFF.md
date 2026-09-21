@@ -5,9 +5,9 @@
 
 ## Current state
 
-- Date: 2026-09-18
+- Date: 2026-09-21
 - Last agent: Codex
-- Current phase: **Phase 8.1 localization/provider status/GUI polish complete; release-candidate verification next**
+- Current phase: **Phase 8 GUI release-candidate polish complete; final user verification next**
 - Phase 2 provider boundary: **COMPLETE**
 - Phase 3/3.1 persistence boundary: **COMPLETE**
 - Phase 4/4.1 budget boundary: **COMPLETE**
@@ -17,7 +17,8 @@
 - Phase 7 productization/release-readiness boundary: **COMPLETE**
 - Phase 8 PySide6/QML GUI boundary: **COMPLETE**
 - Phase 8.1 localization/provider-status/polish boundary: **COMPLETE**
-- Release readiness: **Phase 8.1 gate passed; final user-approved RC/release gate pending**
+- GUI RC scroll/alignment/information-hierarchy polish: **COMPLETE**
+- Release readiness: **GUI RC polish gate passed; final user-approved release gate pending**
 - Publishing/tag/GitHub release: **NOT PERFORMED**
 
 The implemented Phase 7 contract is
@@ -171,6 +172,30 @@ authority is `docs/UI_DESIGN.md` plus the local `quotapilot-ui` Skill.
   separators, empty/error states, Japanese font fallback, and dynamic UNKNOWN
   value translation were polished without changing semantic state colors.
 
+## GUI release-candidate polish
+
+- All five document-style scrollable screens now use one `PageScrollView`.
+  Its explicit content geometry includes the real top and bottom page gutters;
+  the previous single-child auto sizing omitted the child's positive `y`
+  offset and made the final 24 pixels reachable only during overshoot.
+- History headers and rows use the same parent-owned Actual/Expected/State
+  widths and the same Layout constraints. English and Japanese measurements
+  now have identical header/value x coordinates and widths.
+- Default density was reduced without removing data: Overview raises the
+  recommendation/Route action ahead of the chart, keeps provider
+  connection/freshness compact, and puts diagnostic metrics behind `Ctrl+D`;
+  Models hides its provenance panel until details are enabled; Route leads with
+  recommendation plus a three-field summary and progressively discloses the
+  full profile/explanation; Settings keeps policy controls and appearance in
+  view while technical paths/integration metadata remain searchable or
+  available in details mode.
+- UNKNOWN/STALE text, provider status, quota state, routing explanation,
+  escalation, execution directory/approval/timeout/attempt limits, focus and
+  keyboard navigation, and semantic status colors remain present.
+- `tests/unit/test_gui_qml_layout.py` exercises the common scroll geometry at
+  both supported sizes and verifies History column alignment with real English
+  and Japanese Qt translations.
+
 ## Verification
 
 Commands run from the repository root:
@@ -194,7 +219,7 @@ QUOTAPILOT_INTEGRATION=1 uv run pytest tests/integration/
 
 Results:
 
-- Offline/default pytest: **438 passed, 5 skipped**. The skips are the five
+- Offline/default pytest: **440 passed, 5 skipped**. The skips are the five
   explicitly gated authenticated tests.
 - Normal authenticated integration: **5 passed**. It captured quota/models and
   exercised persistence/budget/enrichment/routing only; no model execution.
@@ -202,10 +227,11 @@ Results:
 - Pyright: **0 errors, 0 warnings, 0 informations**.
 - Build: **wheel and sdist succeeded**.
 - Clean-wheel and isolated `uv tool` smoke: **PASS**.
-- QML lint/offscreen smoke, 900x600 smoke, installed-wheel GUI smoke, and real
-  Wayland launch: **PASS**. Overview was visually checked at **1100x720** in
-  English and **900x600** in Japanese; no clipping or mixed UNKNOWN status text
-  remained.
+- QML lint/offscreen smoke and explicit **900x600** / **1100x720** smoke in
+  English and Japanese: **PASS**. Overview, Usage, Route, Execute, History, and
+  Settings were rendered with synthetic data in both target combinations;
+  bottom-of-page stability, compact/default details, safety information, and
+  localized column geometry passed visual review.
 - The final wheel and sdist contain both `.ts` and `.qm` catalogs. A clean
   external venv loaded Japanese from the installed wheel (`Overview` -> `概要`)
   and passed GUI smoke without repository-path resource access.
@@ -242,8 +268,8 @@ Results:
 
 ## Next task
 
-Perform final release-candidate verification, including user interaction review
-on the target desktop, a Japanese copy review, and observation/calibration of
-recommendations, without widening the Phase 6 authorization boundary. macOS and
-Windows remain unverified. A release tag, GitHub release, or package publication
-requires separate explicit user authorization.
+Perform the final user interaction review on the target desktop and address
+only concrete release-candidate defects, without widening the Phase 6
+authorization boundary. macOS and Windows remain unverified. A release tag,
+GitHub release, or package publication requires separate explicit user
+authorization.

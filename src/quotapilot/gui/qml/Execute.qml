@@ -4,15 +4,9 @@ import QtQuick.Layouts
 import "Tokens.js" as Tokens
 import "components"
 
-ScrollView {
+PageScrollView {
     id: page
-    clip: true
-    contentWidth: availableWidth
-    ColumnLayout {
-        width: page.availableWidth - Tokens.space.xl * 2
-        x: Tokens.space.xl
-        y: Tokens.space.xl
-        spacing: Tokens.space.lg
+    contentSpacing: Tokens.space.lg
         Text { text: qsTranslate("Global", "Execute"); color: Tokens.color.textPrimary; font.family: Tokens.font.ui; font.pixelSize: Tokens.type.title; font.weight: Font.DemiBold }
         Text { text: qsTranslate("Global", "Routing and execution remain separate. Review the exact plan before approval."); color: Tokens.color.textSecondary; font.family: Tokens.font.ui; font.pixelSize: Tokens.type.body; wrapMode: Text.Wrap; Layout.fillWidth: true }
         Text { visible: executeViewModel.busy; text: executeViewModel.hasPlan ? qsTranslate("Global", "Executing plan…") : qsTranslate("Global", "Building execution plan…"); color: Tokens.color.textMuted; font.family: Tokens.font.mono; font.pixelSize: Tokens.type.body }
@@ -66,5 +60,4 @@ ScrollView {
             MetricLine { label: qsTranslate("Global", "Failure class"); value: executeViewModel.result.failureClass; translateValue: true }
             Text { visible: executeViewModel.result.message.length > 0; text: executeViewModel.result.message; color: Tokens.color.textSecondary; font.family: Tokens.font.ui; font.pixelSize: Tokens.type.body; wrapMode: Text.Wrap; Layout.fillWidth: true }
         }
-    }
 }

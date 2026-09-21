@@ -4,15 +4,9 @@ import QtQuick.Layouts
 import "Tokens.js" as Tokens
 import "components"
 
-ScrollView {
+PageScrollView {
     id: page
-    clip: true
-    contentWidth: availableWidth
-    ColumnLayout {
-        width: page.availableWidth - Tokens.space.xl * 2
-        x: Tokens.space.xl
-        y: Tokens.space.xl
-        spacing: Tokens.space.xl
+    contentSpacing: Tokens.space.xl
         Text { text: qsTranslate("Global", "Usage"); color: Tokens.color.textPrimary; font.family: Tokens.font.ui; font.pixelSize: Tokens.type.title; font.weight: Font.DemiBold }
         Text { text: qsTranslate("Global", "Persisted snapshots only · missing points are not inferred"); color: Tokens.color.textMuted; font.family: Tokens.font.mono; font.pixelSize: Tokens.type.caption }
         InlineMessage { visible: usageViewModel.hasError; Layout.fillWidth: true; title: qsTranslate("Global", "Usage unavailable"); detail: usageViewModel.errorMessage }
@@ -36,5 +30,4 @@ ScrollView {
                 MetricLine { label: qsTranslate("Global", "Reset"); value: modelData.reset; translateValue: true }
             }
         }
-    }
 }

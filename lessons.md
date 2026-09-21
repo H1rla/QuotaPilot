@@ -111,3 +111,16 @@ does not alone mean the current session is logged out.
 **Rule going forward**: Treat a present account object as authenticated. Only
 report Not authenticated when the account is absent and authentication is
 required; otherwise preserve UNKNOWN.
+
+## 2026-09-21 — Positioned QML content needs explicit scroll geometry
+**What happened**: Scrollable pages placed their only `ColumnLayout` at a
+positive `y` page gutter, while `ScrollView` derived `contentHeight` from the
+column's implicit height alone. The last gutter-sized portion was visible only
+during overshoot and then rebounded out of view.
+**Why**: Automatic single-child sizing does not include a child's positional
+offset, and `RowLayout` likewise does not honor direct child `width` as shared
+table geometry.
+**Rule going forward**: Include top and bottom gutters explicitly in a shared
+scroll component's `contentHeight`. For aligned table headers and rows, share
+column constants and use identical `Layout.minimum/preferred/maximumWidth`
+constraints rather than mixing direct `width` with Layout attached properties.

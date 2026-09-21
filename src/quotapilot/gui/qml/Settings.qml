@@ -4,16 +4,10 @@ import QtQuick.Layouts
 import "Tokens.js" as Tokens
 import "components"
 
-ScrollView {
+PageScrollView {
     id: page
-    clip: true
-    contentWidth: availableWidth
+    contentSpacing: Tokens.space.lg
     property string query: search.text.toLowerCase()
-    ColumnLayout {
-        width: page.availableWidth - Tokens.space.xl * 2
-        x: Tokens.space.xl
-        y: Tokens.space.xl
-        spacing: Tokens.space.lg
         Text { text: qsTranslate("Global", "Settings"); color: Tokens.color.textPrimary; font.family: Tokens.font.ui; font.pixelSize: Tokens.type.title; font.weight: Font.DemiBold }
         TextField {
             id: search; Layout.fillWidth: true; placeholderText: qsTranslate("Global", "Search settings")
@@ -25,7 +19,9 @@ ScrollView {
         Text { visible: settingsViewModel.savedMessage.length > 0; text: qsTranslate("Global", settingsViewModel.savedMessage); color: Tokens.color.accent; font.family: Tokens.font.mono; font.pixelSize: Tokens.type.caption }
 
         ColumnLayout {
-            visible: page.query.length === 0 || "general provider database".indexOf(page.query) >= 0
+            visible: appController.detailsVisible
+                     || (page.query.length > 0
+                         && "general provider database".indexOf(page.query) >= 0)
             Layout.fillWidth: true; spacing: Tokens.space.sm
             SectionHeader { text: qsTranslate("Global", "General") }
             MetricLine { label: qsTranslate("Global", "Provider"); value: settingsViewModel.data.provider }
@@ -59,12 +55,27 @@ ScrollView {
             Rectangle { Layout.fillWidth: true; implicitHeight: 1; color: Tokens.color.border }
         }
         ColumnLayout {
-            visible: page.query.length === 0 || "models profiles integration appearance dark".indexOf(page.query) >= 0
+            visible: appController.detailsVisible
+                     || (page.query.length > 0
+                         && "models profiles profile location".indexOf(page.query) >= 0)
             Layout.fillWidth: true; spacing: Tokens.space.sm
             SectionHeader { text: qsTranslate("Global", "Models & Profiles") }
             MetricLine { label: qsTranslate("Global", "Profile location"); value: settingsViewModel.data.profileDirectory }
+            Rectangle { Layout.fillWidth: true; implicitHeight: 1; color: Tokens.color.border }
+        }
+        ColumnLayout {
+            visible: appController.detailsVisible
+                     || (page.query.length > 0
+                         && "integration codex authentication credentials".indexOf(page.query) >= 0)
+            Layout.fillWidth: true; spacing: Tokens.space.sm
             SectionHeader { text: qsTranslate("Global", "Integration") }
             Text { text: qsTranslate("Global", "Codex CLI authentication remains managed by Codex. QuotaPilot stores no credentials."); color: Tokens.color.textSecondary; font.family: Tokens.font.ui; font.pixelSize: Tokens.type.body; wrapMode: Text.Wrap; Layout.fillWidth: true }
+            Rectangle { Layout.fillWidth: true; implicitHeight: 1; color: Tokens.color.border }
+        }
+        ColumnLayout {
+            visible: page.query.length === 0
+                     || "appearance dark theme language".indexOf(page.query) >= 0
+            Layout.fillWidth: true; spacing: Tokens.space.sm
             SectionHeader { text: qsTranslate("Global", "Appearance") }
             MetricLine { label: qsTranslate("Global", "Theme"); value: qsTranslate("Global", "Dark") }
             RowLayout {
@@ -86,5 +97,4 @@ ScrollView {
                 onClicked: settingsViewModel.save(reserve.text, timezone.text, stale.text, unknownPressure.text, mode.currentText, timeout.text, attempts.text, retries.text, ["system", "en", "ja"][language.currentIndex])
             }
         }
-    }
 }

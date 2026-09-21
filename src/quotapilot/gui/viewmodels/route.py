@@ -21,6 +21,9 @@ from .base import BaseViewModel
 _EMPTY_ROUTE: dict[str, Any] = {
     "model": "Unavailable",
     "effort": "Unavailable",
+    "taskClass": "unknown",
+    "confidence": "unknown",
+    "pressureText": "Unknown",
     "profile": {
         "complexity": 0.0,
         "ambiguity": 0.0,

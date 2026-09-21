@@ -5,16 +5,9 @@ import "I18n.js" as I18n
 import "Tokens.js" as Tokens
 import "components"
 
-ScrollView {
+PageScrollView {
     id: page
-    clip: true
-    contentWidth: availableWidth
-
-    ColumnLayout {
-        width: page.availableWidth - Tokens.space.xl * 2
-        x: Tokens.space.xl
-        y: Tokens.space.xl
-        spacing: Tokens.space.xl
+    contentSpacing: Tokens.space.xl
 
         RowLayout {
             Layout.fillWidth: true
@@ -120,7 +113,7 @@ ScrollView {
 
             RowLayout {
                 Layout.fillWidth: true
-                visible: page.width >= 850 || appController.detailsVisible
+                visible: appController.detailsVisible
                 spacing: Tokens.space.xl
                 MetricLine { Layout.fillWidth: true; label: qsTranslate("Global", "Pressure"); value: overviewViewModel.data.pressure; translateValue: true }
                 MetricLine { Layout.fillWidth: true; label: qsTranslate("Global", "Routable"); value: overviewViewModel.data.routableModels; translateValue: true }
@@ -132,49 +125,6 @@ ScrollView {
             Layout.fillWidth: true
             spacing: Tokens.space.sm
             Rectangle { Layout.fillWidth: true; implicitHeight: 1; color: Tokens.color.border }
-            RowLayout {
-                Layout.fillWidth: true
-                SectionHeader { text: qsTranslate("Global", "Provider") }
-                Item { Layout.fillWidth: true }
-                StateText { statusText: overviewViewModel.providerStatus.status; statusValue: overviewViewModel.providerStatus.statusValue }
-            }
-            GridLayout {
-                Layout.fillWidth: true
-                columns: page.width >= 850 ? 3 : 1
-                rowSpacing: Tokens.space.sm
-                columnSpacing: Tokens.space.xl
-                MetricLine { label: qsTranslate("Global", "Authentication"); value: overviewViewModel.providerStatus.authentication; translateValue: true }
-                MetricLine { label: qsTranslate("Global", "Last refresh"); value: overviewViewModel.providerStatus.lastRefresh; translateValue: true }
-                MetricLine { label: qsTranslate("Global", "Data"); value: overviewViewModel.providerStatus.data; translateValue: true }
-            }
-            Text {
-                visible: overviewViewModel.providerStatus.status !== "Connected"
-                text: qsTranslate("Global", overviewViewModel.providerStatus.guidance)
-                color: Tokens.color.textSecondary
-                font.family: Tokens.font.ui
-                font.pixelSize: Tokens.type.caption
-                wrapMode: Text.Wrap
-                Layout.fillWidth: true
-            }
-        }
-
-        ColumnLayout {
-            Layout.fillWidth: true
-            spacing: Tokens.space.md
-            SectionHeader { text: qsTranslate("Global", "Actual usage vs expected pace") }
-            UsageChart { Layout.fillWidth: true; points: usageViewModel.points }
-            RowLayout {
-                spacing: Tokens.space.xl
-                Text { text: qsTranslate("Global", "— actual"); color: Tokens.color.accent; font.family: Tokens.font.mono; font.pixelSize: Tokens.type.caption }
-                Text { text: qsTranslate("Global", "- - expected"); color: Tokens.color.textMuted; font.family: Tokens.font.mono; font.pixelSize: Tokens.type.caption }
-            }
-        }
-
-        Rectangle { Layout.fillWidth: true; implicitHeight: 1; color: Tokens.color.border }
-
-        ColumnLayout {
-            Layout.fillWidth: true
-            spacing: Tokens.space.sm
             SectionHeader { text: qsTranslate("Global", "Suggested") }
             Text {
                 text: overviewViewModel.hasRecommendation
@@ -198,7 +148,56 @@ ScrollView {
             }
             FlatButton { text: qsTranslate("Global", "Route a task"); onClicked: appController.navigate("Route") }
         }
-    }
 
+        ColumnLayout {
+            Layout.fillWidth: true
+            spacing: Tokens.space.md
+            SectionHeader { text: qsTranslate("Global", "Actual usage vs expected pace") }
+            UsageChart { Layout.fillWidth: true; points: usageViewModel.points }
+            RowLayout {
+                spacing: Tokens.space.xl
+                Text { text: qsTranslate("Global", "— actual"); color: Tokens.color.accent; font.family: Tokens.font.mono; font.pixelSize: Tokens.type.caption }
+                Text { text: qsTranslate("Global", "- - expected"); color: Tokens.color.textMuted; font.family: Tokens.font.mono; font.pixelSize: Tokens.type.caption }
+            }
+        }
+
+        Rectangle { Layout.fillWidth: true; implicitHeight: 1; color: Tokens.color.border }
+
+        ColumnLayout {
+            Layout.fillWidth: true
+            spacing: Tokens.space.sm
+            RowLayout {
+                Layout.fillWidth: true
+                SectionHeader { text: qsTranslate("Global", "Provider") }
+                Item { Layout.fillWidth: true }
+                StateText { statusText: overviewViewModel.providerStatus.status; statusValue: overviewViewModel.providerStatus.statusValue }
+                Text {
+                    text: "·  " + qsTranslate("Global", overviewViewModel.providerStatus.data)
+                    color: overviewViewModel.providerStatus.data.indexOf("STALE") >= 0
+                           ? Tokens.color.stale : Tokens.color.textMuted
+                    font.family: Tokens.font.mono
+                    font.pixelSize: Tokens.type.caption
+                }
+            }
+            GridLayout {
+                visible: appController.detailsVisible
+                Layout.fillWidth: true
+                columns: page.width >= 850 ? 3 : 1
+                rowSpacing: Tokens.space.sm
+                columnSpacing: Tokens.space.xl
+                MetricLine { label: qsTranslate("Global", "Authentication"); value: overviewViewModel.providerStatus.authentication; translateValue: true }
+                MetricLine { label: qsTranslate("Global", "Last refresh"); value: overviewViewModel.providerStatus.lastRefresh; translateValue: true }
+                MetricLine { label: qsTranslate("Global", "Data"); value: overviewViewModel.providerStatus.data; translateValue: true }
+            }
+            Text {
+                visible: overviewViewModel.providerStatus.status !== "Connected"
+                Layout.fillWidth: true
+                text: qsTranslate("Global", overviewViewModel.providerStatus.guidance)
+                color: Tokens.color.textSecondary
+                font.family: Tokens.font.ui
+                font.pixelSize: Tokens.type.caption
+                wrapMode: Text.Wrap
+            }
+        }
     Component.onCompleted: if (!appController.smokeMode) usageViewModel.load()
 }

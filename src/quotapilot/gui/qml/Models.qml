@@ -67,7 +67,7 @@ Item {
                 }
             }
             Rectangle {
-                visible: page.width >= 820 || appController.detailsVisible
+                visible: appController.detailsVisible
                 Layout.preferredWidth: 285; Layout.fillHeight: true
                 color: Tokens.color.surface
                 border.color: Tokens.color.border
