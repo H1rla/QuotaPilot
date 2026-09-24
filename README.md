@@ -122,6 +122,59 @@ take effect on the next launch. Doctor runs offline checks by default.
 Ctrl+Enter is an Analyze shortcut where the terminal reports that key distinctly.
 Tab to Analyze, then Enter, works independently of terminal key encoding.
 
+### Linux desktop launcher
+
+QuotaPilot includes an XDG desktop entry for application launchers such as
+`rofi -show drun`. Install QuotaPilot first, then install the entry for the
+current user with `desktop-file-install` from `desktop-file-utils`:
+
+```bash
+quotapilot_bin="$(command -v quotapilot)"
+desktop_dir="${XDG_DATA_HOME:-$HOME/.local/share}/applications"
+install -d "$desktop_dir"
+desktop-file-install \
+  --dir="$desktop_dir" \
+  --mode=0644 \
+  --set-key=Exec \
+  --set-value="$quotapilot_bin gui" \
+  packaging/linux/io.github.H1rla.QuotaPilot.desktop
+if command -v update-desktop-database >/dev/null; then
+  update-desktop-database "$desktop_dir"
+fi
+```
+
+`command -v quotapilot` must print an executable path; if it does not, install
+QuotaPilot before continuing with the remaining commands.
+
+The launcher starts `quotapilot gui`; it does not start the TUI or execute a
+model. The install step records the resolved executable path because graphical
+sessions may not inherit the interactive shell's `PATH`. No icon is declared
+until QuotaPilot ships a stable installed icon.
+Remove the user-local entry with:
+
+```bash
+desktop_dir="${XDG_DATA_HOME:-$HOME/.local/share}/applications"
+rm "$desktop_dir/io.github.H1rla.QuotaPilot.desktop"
+if command -v update-desktop-database >/dev/null; then
+  update-desktop-database "$desktop_dir"
+fi
+```
+
+### Optional Bash aliases
+
+For a shorter daily workflow, add this clearly marked section to `~/.bashrc`:
+
+```bash
+# QuotaPilot
+alias qp='quotapilot tui'
+alias qpg='quotapilot gui'
+alias qps='quotapilot status'
+```
+
+Run `source ~/.bashrc` in an existing Bash session, or open a new terminal.
+`qp` starts the interactive TUI, `qpg` starts the desktop GUI, and `qps`
+prints the one-shot status view.
+
 ## Commands
 
 ```text

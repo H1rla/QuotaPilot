@@ -5,6 +5,14 @@ Semantic Versioning while pre-1.0 interfaces may still evolve.
 
 ## [Unreleased]
 
+### Added
+
+- Linux XDG desktop entry and install instructions for launching
+  `quotapilot gui` from `drun`-compatible application launchers, including
+  graphical sessions whose `PATH` omits user-local binaries.
+- Documented optional `qp`, `qpg`, and `qps` Bash aliases for TUI, GUI, and
+  one-shot status workflows.
+
 ## [0.1.0] - 2026-09-25
 
 First alpha release. QuotaPilot is experimental and pre-1.0; routing profiles

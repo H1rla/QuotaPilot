@@ -7,7 +7,7 @@
 
 - Date: 2026-09-25
 - Last agent: Codex
-- Current phase: **v0.1.0 local release gate passed; final user approval pending**
+- Current phase: **post-v0.1.0 usability maintenance**
 - Phase 2 provider boundary: **COMPLETE**
 - Phase 3/3.1 persistence boundary: **COMPLETE**
 - Phase 4/4.1 budget boundary: **COMPLETE**
@@ -23,8 +23,8 @@
 - Phase 9.2A Route/Execute/Models: **COMPLETE**
 - TUI navy/blue identity polish: **COMPLETE**
 - Phase 9.2B Usage/History/Settings/Doctor: **COMPLETE**
-- Release readiness: **local release gate passed; final user approval pending**
-- Publishing/tag/GitHub release: **NOT PERFORMED**
+- Release readiness: **v0.1.0 publicly released**
+- Publishing/tag/GitHub release: **v0.1.0 published; no later release performed**
 
 The implemented Phase 7 contract is
 `docs/PHASE7_PRODUCTIZATION_CONTRACT.md`. The reusable pre-publication gate is
@@ -580,3 +580,32 @@ package publication. Do not infer publication approval from this gate.
   were needed. No paid execution, tag, push, release, or publication occurred.
 - Blockers: none for the local gate. Next action: final user release approval;
   any tag, push, GitHub release, or publication needs an explicit instruction.
+
+## 2026-09-25 — Post-v0.1.0 Linux launch conveniences
+
+- Added the portable repository desktop entry
+  `packaging/linux/io.github.H1rla.QuotaPilot.desktop`. It launches
+  `quotapilot gui`, does not use a source-checkout path, and omits `Icon`
+  because no stable installed QuotaPilot icon exists yet. The README installer
+  resolves `quotapilot` once and writes that install-time executable path into
+  the user-local copy; this is necessary because Hyprland/rofi may intentionally
+  start with a minimal `PATH` that excludes `~/.local/bin`.
+- The entry is included in the sdist and README documents explicit user-local
+  install/removal under `$XDG_DATA_HOME/applications` (falling back to
+  `~/.local/share/applications`) plus the optional desktop database refresh.
+- Added documented Bash aliases `qp` (TUI), `qpg` (GUI), and `qps` (status).
+  The current user has the exact marked alias block in `~/.bashrc`, the
+  released v0.1.0 wheel installed through `uv tool`, and the validated entry
+  at `~/.local/share/applications/io.github.H1rla.QuotaPilot.desktop`.
+- Verification: `desktop-file-validate` returned no errors (only the expected
+  dual-category hint), the repository template and generated installed entry
+  are valid, an isolated interactive Bash resolves all three aliases, CLI help
+  passed, pytest reported **531 passed, 5 skipped**, Ruff passed, Pyright
+  reported zero errors/warnings, and `git diff --check` passed.
+- Follow-up reproduction confirmed the original bare `Exec=quotapilot gui`
+  entry appeared in drun but could not start under Hyprland's
+  `/usr/local/bin:/usr/bin` environment. The installed entry now uses the
+  resolved user-local executable and was launched successfully with that same
+  restricted `PATH`; the resulting real QuotaPilot window was then closed.
+- Changes remain under `[Unreleased]`. The existing v0.1.0 tag, changelog
+  entry, and GitHub Release were not changed; no new release was published.

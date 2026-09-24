@@ -80,3 +80,20 @@ def test_tui_runtime_dependency_and_assets_are_present() -> None:
     assert (tui / "styles" / "quotapilot.tcss").is_file()
     assert (tui / "locales" / "en.yaml").is_file()
     assert (tui / "locales" / "ja.yaml").is_file()
+
+
+def test_linux_desktop_entry_is_portable_and_included_in_sdist() -> None:
+    metadata = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    desktop_entry = (
+        ROOT / "packaging" / "linux" / "io.github.H1rla.QuotaPilot.desktop"
+    )
+    content = desktop_entry.read_text(encoding="utf-8")
+
+    assert "/packaging" in metadata["tool"]["hatch"]["build"]["targets"]["sdist"][
+        "include"
+    ]
+    assert "Type=Application" in content
+    assert "Exec=quotapilot gui" in content
+    assert "Terminal=false" in content
+    assert "/home/" not in content
+    assert "Icon=" not in content

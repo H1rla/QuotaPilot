@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=QuotaPilot
+Comment=Quota-aware model routing and Codex workflow tool
+Exec=quotapilot gui
+Terminal=false
+Categories=Development;Utility;
+Keywords=quota;Codex;AI;developer;
+StartupNotify=true
