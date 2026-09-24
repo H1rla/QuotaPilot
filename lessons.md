@@ -124,3 +124,54 @@ table geometry.
 scroll component's `contentHeight`. For aligned table headers and rows, share
 column constants and use identical `Layout.minimum/preferred/maximumWidth`
 constraints rather than mixing direct `width` with Layout attached properties.
+
+## 2026-09-21 — Terminal shortcuts and System theme need framework-level proof
+**What happened**: Phase 9 design found that Textual text controls legitimately
+consume printable navigation letters and use `Ctrl+D` for editing, while
+Textual full-screen themes normally render explicit colors and cannot reliably
+infer the terminal's background.
+**Why**: A global binding can silently break normal text editing, and a
+desktop-style “System theme” assumption does not map cleanly to terminal color
+capabilities.
+**Rule going forward**: Keep printable navigation shortcuts non-priority and
+guard them by focus context; derive footer/help from that same keymap. Prototype
+terminal-default rendering against the pinned framework before promising it,
+and expose a deterministic fallback instead of guessing from environment
+heuristics.
+
+## 2026-09-23 — Textual ANSI mode is not terminal-background detection
+**What happened**: The Phase 9.1 System-theme spike registered a Textual 8.2.8
+theme with `ansi=True`; Textual's base screen then required ANSI-specific theme
+variables and could not mount. Supplying variables would still not reveal
+whether the terminal background is light or dark.
+**Why**: ANSI rendering support and reliable terminal-background discovery are
+different capabilities. Treating the first as the second would produce
+unreadable combinations on some terminals.
+**Rule going forward**: Register System as the documented explicit Dark
+fallback until the pinned framework provides reliable background discovery;
+never infer brightness from non-portable environment hints.
+
+## 2026-09-24 — An interactive plan change needs its own service callback
+**What happened**: The Phase 6 service could auto-approve a later escalation
+under some configured modes without invoking the original approval callback.
+**Why**: The service callback represented policy-required confirmation, while
+the TUI contract adds an explicit gesture for every changed displayed plan.
+**Rule going forward**: Keep the core policy intact and pass a separate
+interactive plan-change callback; bind each gesture to the entire visible
+plan and test low-risk automatic policy as well as always-confirm.
+
+## 2026-09-24 — Verify terminal color with and without NO_COLOR
+**What happened**: Textual Pilot screenshots initially appeared grayscale
+despite the new navy tokens because this shell exports `NO_COLOR=1`.
+**Why**: Textual intentionally strips nonessential chroma in that mode, so a
+grayscale screenshot cannot validate a color palette.
+**Rule going forward**: Capture color visual checks with `NO_COLOR` unset, then
+check `NO_COLOR=1` separately for marker, emphasis, and text readability.
+
+## 2026-09-24 — Textual widget method names are extension boundaries
+**What happened**: New Settings and Doctor widgets defined helpers named
+`refresh` and `_render`, which shadowed Textual's own layout/render methods and
+caused a mounted-screen failure.
+**Why**: Textual calls these methods internally during composition and repaint.
+**Rule going forward**: Use distinct helper names such as `update_editor_state`
+and `_render_state`; mount every new screen in Pilot before deeper tests.

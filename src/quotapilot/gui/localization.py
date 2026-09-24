@@ -8,24 +8,11 @@ from PySide6.QtCore import Property, QCoreApplication, QLocale, QObject, QTransl
 from PySide6.QtQml import QQmlApplicationEngine
 
 from quotapilot.config import LanguagePreference
-
-SUPPORTED_LANGUAGES = ("en", "ja")
+from quotapilot.localization import resolve_language
 
 
 def translation_directory() -> Path:
     return Path(__file__).resolve().parent / "i18n"
-
-
-def resolve_language(preference: LanguagePreference | str, system_locale: str) -> str:
-    """Resolve explicit preference, then system locale, then English fallback."""
-    try:
-        configured = LanguagePreference(preference)
-    except ValueError:
-        return "en"
-    if configured is not LanguagePreference.SYSTEM:
-        return configured.value
-    normalized = system_locale.strip().replace("-", "_").lower()
-    return "ja" if normalized == "ja" or normalized.startswith("ja_") else "en"
 
 
 class TranslationManager(QObject):

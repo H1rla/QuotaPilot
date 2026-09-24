@@ -14,7 +14,7 @@ from quotapilot.config import (
     ConfigValidationError,
     load_effective_config,
 )
-from quotapilot.config.models import LanguagePreference
+from quotapilot.config.models import LanguagePreference, TuiThemePreference
 from quotapilot.execution.models import ExecutionMode
 
 runner = CliRunner()
@@ -32,6 +32,7 @@ def test_absent_config_uses_strict_defaults(tmp_path: Path) -> None:
     assert effective.config.budget.reserve_fraction == 0.10
     assert effective.config.execution.mode is ExecutionMode.ALWAYS_CONFIRM
     assert effective.config.appearance.language is LanguagePreference.SYSTEM
+    assert effective.config.appearance.tui_theme is TuiThemePreference.SYSTEM
     assert effective.sources["budget.reserve_fraction"] == "policy-default"
 
 
@@ -46,6 +47,7 @@ execution:
   mode: never_execute
 appearance:
   language: ja
+  tui_theme: light
 """,
     )
 
@@ -55,6 +57,7 @@ appearance:
     assert effective.config.budget.timezone == "Asia/Tokyo"
     assert effective.config.execution.mode is ExecutionMode.NEVER_EXECUTE
     assert effective.config.appearance.language is LanguagePreference.JAPANESE
+    assert effective.config.appearance.tui_theme is TuiThemePreference.LIGHT
     assert effective.sources["budget.reserve_fraction"] == "user-config"
 
 
@@ -68,6 +71,7 @@ appearance:
         ("budget:\n  timezone: Mars/Olympus\n", ConfigValidationError),
         ("execution:\n  mode: maybe\n", ConfigValidationError),
         ("appearance:\n  language: klingon\n", ConfigValidationError),
+        ("appearance:\n  tui_theme: sepia\n", ConfigValidationError),
     ],
 )
 def test_malformed_or_invalid_config_is_rejected(

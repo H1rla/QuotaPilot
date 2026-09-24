@@ -14,8 +14,8 @@ quota.
 
 QuotaPilot is a pre-1.0 Linux-tested project. Its provider, persistence,
 budget, routing, capability-profile, controlled-execution, and product CLI
-boundaries are implemented. The Phase 8 PySide6/QML desktop GUI is implemented
-and undergoing release-candidate verification. Routing coefficients and bundled model profiles
+boundaries are implemented. The Phase 8 PySide6/QML desktop GUI and all eight
+Phase 9 Textual TUI destinations are implemented. Routing coefficients and bundled model profiles
 are deterministic and reviewable, but remain heuristic and provisionally
 calibrated.
 
@@ -35,6 +35,9 @@ calibrated.
   Execute, History, Settings, and a `Ctrl+P` command palette.
 - Runtime-switchable System/English/Japanese GUI localization and compact,
   privacy-safe Codex connection/authentication status.
+- Persistent Textual terminal shell with all eight destinations;
+  adaptive navigation, localized command palette/help, safe background refresh,
+  and Dark/Light themes.
 
 ## Safety and privacy
 
@@ -95,6 +98,7 @@ quotapilot budget
 quotapilot models
 quotapilot route "Fix typo in README"
 quotapilot execute "Fix typo in README" --dry-run
+quotapilot tui
 quotapilot gui
 ```
 
@@ -102,6 +106,21 @@ quotapilot gui
 snapshot. `status --refresh` first attempts one live capture and clearly labels
 a persisted fallback if capture fails. Real execution performs its own fresh
 quota/capability revalidation immediately before each attempt.
+
+In `quotapilot tui`, open Route, type a task, and choose Analyze. Review the
+model, effort, reason, and escalation. Dry Run builds a real plan without
+starting the execution adapter. Execute opens a plan showing the working
+directory, quota context, timeout, attempts, and warning; Cancel has initial
+focus. Move focus to Approve & Execute to start a real run. Esc cancels, and
+any changed escalation plan asks for separate approval. Models offers a local
+`/` filter and detail view. Usage shows actual versus expected pace and a
+bounded trend. History lists privacy-safe usage snapshots; execution history
+is explicitly empty because no execution audit is persisted. Settings offers
+strict category-based editing with explicit atomic save; saved TUI settings
+take effect on the next launch. Doctor runs offline checks by default.
+
+Ctrl+Enter is an Analyze shortcut where the terminal reports that key distinctly.
+Tab to Analyze, then Enter, works independently of terminal key encoding.
 
 ## Commands
 
@@ -118,6 +137,7 @@ quotapilot calibrate evaluate [--json]
 quotapilot execute TASK --dry-run [--json]
 quotapilot execute TASK
 quotapilot waybar
+quotapilot tui
 quotapilot gui
 ```
 
@@ -168,6 +188,8 @@ profiles:
 appearance:
   # system resolves Japanese locales to ja; unsupported locales use English.
   language: system  # system | en | ja
+  # System currently resolves explicitly to Dark; terminal brightness is not guessed.
+  tui_theme: system  # system | dark | light
 ```
 
 Precedence is:
@@ -246,6 +268,7 @@ Providers -> Domain -> Persistence
                          Capability profiles
 
 CLI / Waybar -> Services -> existing core boundaries
+TUI App / ViewModels -> Services -> Textual views
 GUI ViewModels / Controllers -> Services -> QML views
 ```
 
@@ -262,10 +285,9 @@ use Codex authentication or execute paid models.
 
 ## Roadmap
 
-Next work is final release-candidate verification, including GUI interaction
-review on the target desktop. Publishing or tagging still requires explicit
-user approval; hosted telemetry and autonomous background execution remain out
-of scope.
+All eight TUI destinations are implemented. Release-readiness review,
+publishing, and tagging remain separate actions; hosted telemetry and
+autonomous background execution remain out of scope.
 
 ## License
 

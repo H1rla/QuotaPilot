@@ -17,6 +17,7 @@ from quotapilot.cli.gui import gui
 from quotapilot.cli.models import models
 from quotapilot.cli.route import route
 from quotapilot.cli.status import status
+from quotapilot.cli.tui import tui
 from quotapilot.cli.waybar import waybar
 
 app = typer.Typer(
@@ -35,6 +36,7 @@ app.command("status")(status)
 app.command("waybar")(waybar)
 app.command("doctor")(doctor)
 app.command("gui")(gui)
+app.command("tui")(tui)
 
 
 def _version_callback(value: bool) -> None:

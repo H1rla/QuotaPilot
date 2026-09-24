@@ -1,0 +1,491 @@
+Screen {
+    background: $background;
+    color: $foreground;
+}
+
+#shell {
+    width: 100%;
+    height: 100%;
+    background: $background;
+}
+
+#header-bar {
+    height: 1;
+    width: 100%;
+    background: $surface;
+    color: $foreground;
+}
+
+#header-title {
+    width: 1fr;
+    padding-left: 1;
+    text-style: bold;
+}
+
+#header-provider {
+    width: auto;
+    padding-right: 1;
+    color: $muted;
+}
+
+#body {
+    height: 1fr;
+    width: 100%;
+}
+
+#navigation {
+    width: 14;
+    min-width: 14;
+    height: 100%;
+    padding-top: 1;
+    background: $surface;
+    color: $muted;
+    border: none;
+    scrollbar-size: 0 0;
+}
+
+#navigation > .option-list--option,
+#destination-menu > .option-list--option {
+    padding: 0 1;
+}
+
+#navigation > .option-list--option-highlighted,
+#destination-menu > .option-list--option-highlighted {
+    background: $accent-subtle;
+    color: $foreground;
+    text-style: bold;
+}
+
+#content {
+    width: 1fr;
+    height: 100%;
+    background: $background;
+}
+
+.destination-view {
+    width: 100%;
+    height: 100%;
+    padding: 1 3;
+    border-left: tall $background;
+    scrollbar-color: $muted $background;
+    scrollbar-size: 1 1;
+}
+
+.destination-view:focus {
+    border-left: tall $accent-focus;
+}
+
+.screen-title {
+    height: auto;
+    margin-bottom: 1;
+    text-style: bold;
+}
+
+#overview-progress {
+    height: auto;
+    color: $muted;
+}
+
+#overview-primary {
+    height: auto;
+    margin-top: 1;
+}
+
+#overview-remaining {
+    width: 1fr;
+    text-style: bold;
+}
+
+#overview-state {
+    width: auto;
+    padding-right: 2;
+    text-style: bold;
+}
+
+#overview-metrics {
+    height: auto;
+    grid-size: 3 1;
+    grid-columns: 1fr 1fr 1fr;
+    margin-top: 1;
+}
+
+.subtle-rule {
+    height: 1;
+    margin-top: 1;
+    border-top: ascii $panel;
+}
+
+.section-title {
+    height: auto;
+    text-style: bold;
+}
+
+#overview-route {
+    height: auto;
+    margin-top: 1;
+    color: $accent-focus;
+}
+
+#overview-view:focus #overview-route {
+    color: $foreground;
+    background: $accent-subtle;
+    text-style: bold;
+}
+
+#overview-route-reason,
+.muted {
+    color: $muted;
+    height: auto;
+}
+
+#route-task {
+    height: 6;
+    min-height: 4;
+    margin-top: 1;
+    border: round $panel;
+}
+
+#route-task:focus {
+    border: round $accent-focus;
+}
+
+#models-filter:focus {
+    border: tall $accent-focus;
+}
+
+.action-row {
+    height: auto;
+    margin-top: 1;
+    margin-bottom: 1;
+}
+
+.action-row Button {
+    margin-right: 1;
+}
+
+.action-row Button:focus {
+    background: $accent-subtle;
+    color: $foreground;
+    border: tall $accent-focus;
+    text-style: bold;
+}
+
+.action-row Button:hover {
+    background: $accent-subtle;
+}
+
+.action-row Button.-active {
+    background: $accent-pressed;
+    color: $accent-on;
+}
+
+.notice {
+    height: auto;
+    color: $warning;
+}
+
+.semantic-error {
+    color: $error;
+}
+
+#route-result,
+#execute-plan,
+#models-list-region,
+#models-detail-region {
+    height: auto;
+}
+
+#route-result .section-title,
+#execute-plan .section-title {
+    margin-top: 1;
+}
+
+#route-model {
+    height: auto;
+    text-style: bold;
+}
+
+#route-why,
+#route-escalation,
+#route-context,
+#route-details,
+#execute-fields,
+#execute-escalation,
+#execute-result,
+#models-detail,
+#models-evidence,
+#models-count {
+    height: auto;
+    width: 100%;
+    text-wrap: wrap;
+    overflow-x: hidden;
+}
+
+#execute-warning {
+    height: auto;
+    margin-top: 1;
+    color: $warning;
+    text-wrap: wrap;
+}
+
+#execute-result {
+    margin-top: 1;
+    color: $foreground;
+}
+
+#models-filter {
+    height: 3;
+    margin-bottom: 1;
+}
+
+#models-list {
+    height: auto;
+    max-height: 1fr;
+    min-height: 4;
+    scrollbar-size: 1 1;
+}
+
+#models-main {
+    height: auto;
+    width: 100%;
+}
+
+#models-list-region {
+    width: 2fr;
+    min-width: 20;
+}
+
+#models-detail-region {
+    width: 3fr;
+    padding-left: 2;
+    border-left: tall $background;
+}
+
+#models-detail-region:focus {
+    border-left: tall $accent-focus;
+}
+
+#shell.layout-compact #models-list-region,
+#shell.layout-compact #models-detail-region,
+#shell.layout-constrained #models-list-region,
+#shell.layout-constrained #models-detail-region {
+    width: 100%;
+    padding-left: 0;
+}
+
+#models-list > .option-list--option-highlighted {
+    background: $accent-subtle;
+    color: $foreground;
+    text-style: bold;
+}
+
+CommandList > .option-list--option-highlighted {
+    background: $accent-subtle;
+    color: $foreground;
+    text-style: bold;
+}
+
+#models-detail {
+    text-wrap: wrap;
+}
+
+#overview-freshness {
+    margin-top: 2;
+}
+
+#overview-message {
+    height: auto;
+    margin-top: 1;
+    color: $warning;
+}
+
+.muted {
+    margin-top: 1;
+}
+
+.state-very-under,
+.state-under,
+.state-on-track,
+.state-unknown {
+    color: $muted;
+}
+
+.state-over {
+    color: $warning;
+}
+
+.state-critical {
+    color: $error;
+}
+
+.state-stale {
+    color: $stale;
+}
+
+#contextual-footer {
+    height: 1;
+    width: 100%;
+    padding-left: 1;
+    background: $surface;
+    color: $muted;
+    text-overflow: ellipsis;
+    text-wrap: nowrap;
+}
+
+#resize-guard {
+    display: none;
+    height: 1fr;
+    width: 100%;
+    content-align: center middle;
+    text-align: center;
+    color: $warning;
+    padding: 1;
+}
+
+#shell.layout-compact #navigation,
+#shell.layout-constrained #navigation,
+#shell.layout-compact #header-provider,
+#shell.layout-constrained #header-provider {
+    display: none;
+}
+
+#shell.layout-compact .destination-view,
+#shell.layout-constrained .destination-view {
+    padding: 1 2;
+}
+
+#shell.vertical-very-short .destination-view {
+    padding-top: 0;
+    padding-bottom: 0;
+}
+
+#shell.layout-compact #route-task,
+#shell.vertical-short #route-task {
+    height: 4;
+}
+
+#shell.layout-compact .action-row {
+    width: 100%;
+}
+
+HelpOverlay,
+DestinationOverlay,
+QuitExecutionOverlay {
+    align: center middle;
+    background: $background 70%;
+}
+
+#quit-execution-dialog {
+    width: 62;
+    max-width: 90%;
+    height: auto;
+    padding: 1 2;
+    background: $surface;
+    border: round $warning;
+}
+
+#help-dialog {
+    width: 60;
+    max-width: 90%;
+    height: auto;
+    max-height: 90%;
+    padding: 1 2;
+    background: $surface;
+    border: round $accent-focus;
+}
+
+#help-content {
+    height: auto;
+}
+
+#destination-menu {
+    width: 28;
+    max-width: 80%;
+    height: 12;
+    padding: 1;
+    background: $surface;
+    border: round $accent-focus;
+}
+
+#usage-main, #usage-trend, #usage-details,
+#history-detail, #history-message,
+#doctor-detail, #doctor-summary, #doctor-message,
+#settings-editor-title, #settings-message, #settings-apply-note {
+    height: auto;
+    text-wrap: wrap;
+    overflow-x: hidden;
+}
+
+#usage-main, #history-detail, #doctor-detail {
+    margin-top: 1;
+}
+
+#usage-details, #history-detail, #doctor-detail {
+    border-left: tall $accent-focus;
+    padding-left: 1;
+}
+
+#history-filter, #settings-filter {
+    height: 3;
+    margin-bottom: 1;
+}
+
+#history-filter:focus, #settings-filter:focus,
+#settings-input:focus, #settings-select:focus {
+    border: tall $accent-focus;
+}
+
+#history-list, #doctor-list, #settings-categories, #settings-fields {
+    height: auto;
+    min-height: 4;
+    max-height: 1fr;
+    scrollbar-size: 1 1;
+}
+
+#history-list > .option-list--option-highlighted,
+#doctor-list > .option-list--option-highlighted,
+#settings-categories > .option-list--option-highlighted,
+#settings-fields > .option-list--option-highlighted {
+    background: $accent-subtle;
+    color: $foreground;
+    text-style: bold;
+}
+
+#settings-main {
+    height: auto;
+}
+
+#settings-categories-region {
+    width: 1fr;
+    min-width: 18;
+}
+
+#settings-fields-region {
+    width: 2fr;
+    padding-left: 2;
+}
+
+#settings-editor-region {
+    height: auto;
+    margin-top: 1;
+}
+
+#settings-input, #settings-select {
+    width: 100%;
+}
+
+#doctor-actions {
+    height: auto;
+    max-height: 4;
+    margin-top: 1;
+}
+
+#shell.layout-compact #settings-main {
+    layout: vertical;
+}
+
+#shell.layout-compact #settings-categories-region,
+#shell.layout-compact #settings-fields-region {
+    width: 100%;
+    padding-left: 0;
+}

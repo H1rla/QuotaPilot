@@ -67,3 +67,16 @@ def test_gui_runtime_dependency_and_qml_assets_are_present() -> None:
     assert "<translation>概要</translation>" in (i18n / "quotapilot_ja.ts").read_text(
         encoding="utf-8"
     )
+
+
+def test_tui_runtime_dependency_and_assets_are_present() -> None:
+    metadata = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    tui = ROOT / "src" / "quotapilot" / "tui"
+
+    assert any(
+        dependency.startswith("textual")
+        for dependency in metadata["project"]["dependencies"]
+    )
+    assert (tui / "styles" / "quotapilot.tcss").is_file()
+    assert (tui / "locales" / "en.yaml").is_file()
+    assert (tui / "locales" / "ja.yaml").is_file()

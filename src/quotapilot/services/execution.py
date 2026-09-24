@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -132,7 +133,8 @@ class ExecutionService:
             context.recommendation.selected_effort,
             resolved,
         )
-        return self._planner.build(
+        return await asyncio.to_thread(
+            self._planner.build,
             context.recommendation,
             context.budget_report,
             provider=context.provider,
@@ -149,6 +151,7 @@ class ExecutionService:
         plan: ExecutionPlan,
         *,
         approval_handler: ApprovalHandler | None = None,
+        plan_change_handler: ApprovalHandler | None = None,
     ) -> ExecutionResult:
         now = self._clock()
         self._planner.validate_initial(plan)
@@ -194,7 +197,12 @@ class ExecutionService:
                     retry_count=retry_count,
                     escalation_count=escalation_count,
                 )
-            if decision.requires_confirmation and not approval_reusable:
+            # Interactive clients may require a new UI confirmation for every
+            # changed escalation plan even when the core policy permits auto-approval.
+            needs_approval = decision.requires_confirmation or (
+                current.escalation_index > 0 and plan_change_handler is not None
+            )
+            if needs_approval and not approval_reusable:
                 events.append(
                     execution_event(
                         current,
@@ -203,7 +211,10 @@ class ExecutionService:
                         decision.reason,
                     )
                 )
-                if approval_handler is None:
+                handler = (
+                    approval_handler if decision.requires_confirmation else plan_change_handler
+                )
+                if handler is None:
                     return self._not_started(
                         current,
                         ExecutionStatus.AWAITING_APPROVAL,
@@ -214,7 +225,7 @@ class ExecutionService:
                         retry_count=retry_count,
                         escalation_count=escalation_count,
                     )
-                if not await approval_handler(current):
+                if not await handler(current):
                     return self._not_started(
                         current,
                         ExecutionStatus.DENIED,
@@ -367,12 +378,14 @@ class ExecutionService:
     ) -> RoutingContext:
         snapshot = await self._provider.capture_usage()
         if profile is not None:
-            return self._routing.recommend_profile_snapshot(
+            return await asyncio.to_thread(
+                self._routing.recommend_profile_snapshot,
                 snapshot,
                 profile,
                 now=self._clock(),
             )
-        return self._routing.recommend_snapshot(
+        return await asyncio.to_thread(
+            self._routing.recommend_snapshot,
             snapshot,
             task,
             now=self._clock(),

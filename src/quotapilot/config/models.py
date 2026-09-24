@@ -57,11 +57,19 @@ class ProfilesConfig(BaseModel):
 
 
 class LanguagePreference(StrEnum):
-    """Supported GUI language selection modes."""
+    """Supported presentation language selection modes."""
 
     SYSTEM = "system"
     ENGLISH = "en"
     JAPANESE = "ja"
+
+
+class TuiThemePreference(StrEnum):
+    """Supported terminal theme selection modes."""
+
+    SYSTEM = "system"
+    DARK = "dark"
+    LIGHT = "light"
 
 
 class AppearanceConfig(BaseModel):
@@ -70,6 +78,7 @@ class AppearanceConfig(BaseModel):
     model_config = ConfigDict(frozen=True, strict=True, extra="forbid")
 
     language: LanguagePreference = LanguagePreference.SYSTEM
+    tui_theme: TuiThemePreference = TuiThemePreference.SYSTEM
 
 
 class AppConfig(BaseModel):

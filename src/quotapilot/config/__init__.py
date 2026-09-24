@@ -17,6 +17,7 @@ from quotapilot.config.models import (
     LanguagePreference,
     ProfilesConfig,
     ProviderConfig,
+    TuiThemePreference,
 )
 from quotapilot.config.writer import save_user_config
 
@@ -31,6 +32,7 @@ __all__ = [
     "LanguagePreference",
     "ProfilesConfig",
     "ProviderConfig",
+    "TuiThemePreference",
     "default_config_path",
     "load_effective_config",
     "save_user_config",

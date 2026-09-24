@@ -1600,3 +1600,40 @@ small provider-neutral typed result. A service combines it with the existing
 privacy-safe status report for GUI display. It exposes no account identity,
 plan inference, credentials, or raw response data and runs on the existing GUI
 worker boundary.
+
+---
+
+## 33. Phase 9.1 interactive terminal foundation
+
+The Textual 8.2.x frontend launches explicitly through `quotapilot tui`; bare
+`quotapilot` retains Typer help behavior and non-TUI commands import no Textual
+modules. `src/quotapilot/tui/` contains plain immutable presentation state and
+ViewModels above the existing `StatusService` and `ProviderStatusService`, with
+Textual screens/widgets remaining the terminal-only boundary.
+
+Overview mounts before local I/O, publishes persisted status, inspects provider
+availability without authentication, and performs one background capture only
+when the provider is already connected and authenticated. Manual refresh uses
+the same path and concurrent requests are coalesced. Failure preserves useful
+persisted UNKNOWN/STALE data.
+
+The shell uses the approved 120/88/60-column and 30/24/18-row breakpoints,
+Arrow-first navigation with focus-aware hjkl aliases, localized Ctrl+P commands,
+contextual Help/footer metadata from one key registry, English/Japanese YAML
+catalogs, and strict System/Dark/Light configuration. Textual cannot reliably
+discover terminal background brightness; System therefore resolves explicitly
+to the registered Dark fallback. Phase 9.1 initially labeled the other seven
+destinations as Phase 9.2 placeholders; later phases replaced all of them.
+
+---
+
+## 34. Phase 9.2B secondary terminal screens
+
+Usage and History project bounded privacy-safe persisted snapshots through the
+repository protocol and existing `BudgetEngine`; neither screen performs
+provider RPC or creates execution audit data. Settings stages changes in the
+strict `AppConfig` and uses the atomic config writer; all saved changes take
+effect on the next TUI launch. Doctor uses the existing offline diagnostic
+service in a Textual worker isolated from its synchronous checks. The four
+screens complete the eight-destination TUI without changing core policy,
+persistence, CLI JSON, or GUI behavior.

@@ -14,7 +14,7 @@ import yaml
 from pydantic import ValidationError
 
 from quotapilot.config.errors import ConfigLoadError, ConfigValidationError
-from quotapilot.config.models import AppConfig, LanguagePreference
+from quotapilot.config.models import AppConfig, LanguagePreference, TuiThemePreference
 from quotapilot.execution.models import ExecutionMode, FailureClass
 
 _APP_NAME = "quotapilot"
@@ -129,6 +129,11 @@ def _normalize_file_value(dotted: str, value: Any) -> Any:
             return LanguagePreference(value)
         except ValueError as exc:
             raise ConfigValidationError("invalid configuration at appearance.language") from exc
+    if dotted == "appearance.tui_theme" and isinstance(value, str):
+        try:
+            return TuiThemePreference(value)
+        except ValueError as exc:
+            raise ConfigValidationError("invalid configuration at appearance.tui_theme") from exc
     if dotted in {"execution.retryable_failures", "execution.escalation_failures"}:
         if not isinstance(value, list) or any(not isinstance(item, str) for item in value):
             return value

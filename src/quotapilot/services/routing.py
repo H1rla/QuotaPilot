@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
@@ -82,7 +83,8 @@ class RoutingService:
         snapshot = await self._repository.get_latest_snapshot(provider=provider)
         if snapshot is None:
             return None
-        return self.recommend_snapshot(
+        return await asyncio.to_thread(
+            self.recommend_snapshot,
             snapshot,
             summary,
             now=now,

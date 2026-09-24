@@ -1008,3 +1008,180 @@ Codex CLI workflow; QuotaPilot neither stores credentials nor starts login.
 context, while model IDs, paths, config values, and commands shown as literal
 instructions remain canonical. Japanese-capable font fallbacks and 900x600
 reflow are part of the desktop acceptance surface.
+
+---
+
+## 2026-09-21 — Phase 9 TUI design selects Textual and preserves explicit launch
+
+**Framework**: Phase 9 will use Textual, evaluated against prompt_toolkit,
+Urwid, and a Rich/custom loop. Textual was selected because its existing
+async-worker lifecycle, focus-aware bindings, normal Input/TextArea widgets,
+responsive layout, mouse events, built-in fuzzy Ctrl+P command palette, and
+Pilot interaction tests cover QuotaPilot's cross-cutting requirements without
+building a second terminal application framework. The reviewed baseline is
+Textual 8.2.x with a `<9` major bound; implementation must revalidate the exact
+version before adding the dependency and does not need the syntax extra.
+
+**Launch compatibility**: Phase 9 adds explicit `quotapilot tui`. Bare
+`quotapilot` retains the existing `no_args_is_help=True` behavior, and
+`quotapilot --help` remains help. Textual is imported lazily only inside the
+new command so established CLI and JSON automation do not initialize the TUI.
+Changing the bare command to launch full-screen UI is not recommended without a
+future major-version compatibility decision.
+
+**Navigation and interaction**: At 88 columns or more, the TUI uses a narrow
+text navigation rail plus content; at 120 columns it may add a detail pane;
+below 88 columns navigation collapses to an overlay, so conventional 80x24 uses
+the compact single-view layout. Ctrl+P is the global fuzzy
+surface and `/` is local filtering only—slash commands are not implemented.
+Arrow keys are canonical and hjkl aliases them only outside text input. One
+keymap registry drives actions, the contextual footer, and contextual Help.
+
+**Execution safety**: The TUI adds no execution policy. It calls the existing
+Phase 6 service and adds a visible UI gesture gate: execution confirmation
+opens on Cancel, approval must receive explicit focus, Esc cancels, and every
+candidate plan delivered to the approval callback—including changed
+escalation—must be displayed and separately approved. Command-palette actions
+cannot approve execution.
+
+**Localization and appearance**: The TUI reuses
+`appearance.language = system | en | ja` through a frontend-neutral locale
+resolver and packaged TUI message catalogs; it does not import Qt. Phase 9 adds
+the additive central preference
+`appearance.tui_theme = system | dark | light`, which does not change the QML
+GUI theme. System prefers terminal-native colors where the pinned Textual stack
+can do so reliably; if it cannot, it visibly resolves to Dark rather than
+guessing the terminal background from unreliable environment heuristics.
+
+**Startup semantics**: The shell renders immediately and asynchronously loads
+persisted state plus provider availability. It does not perform a live quota
+capture until the user explicitly refreshes, preserving the existing
+persisted-first/explicit-refresh service semantics.
+
+The normative UX and implementation contracts are `docs/CUI_DESIGN.md` and
+`docs/PHASE9_TUI_CONTRACT.md`. This entry records design decisions only; no TUI
+production code or release action was performed.
+
+---
+
+## 2026-09-21 — Phase 9 startup performs one safe background provider refresh
+
+This decision supersedes only the **Startup semantics** paragraph of the prior
+Phase 9 TUI design entry.
+
+**Decision**: On each TUI launch, render the shell and publish persisted/local
+state before waiting for the provider. Then inspect provider status without
+starting authentication. If the provider is already connected and
+authenticated and its adapter path is verified as provider-side read-only,
+start exactly one non-blocking refresh through the existing `StatusService`.
+Provider reads may be followed by the service's normal local persistence of a
+coherent snapshot.
+
+**Safety and failure behavior**: The automatic operation never starts login,
+consumes reset credit, executes a task, or mutates provider/account
+configuration. Unavailable, unauthenticated, unknown, or otherwise unsafe
+provider state skips the refresh and exposes an actionable status. Refresh
+failure retains the usable persisted report and its persisted-fallback,
+UNKNOWN, or STALE meaning. A quiet `Refreshing...` indicator is local to the
+affected view, and `r` remains available for explicit manual refresh.
+
+**Why**: Daily interactive use should become current without making first
+render depend on provider latency or weakening the existing persistence,
+authentication, execution, and unknown-state safety boundaries.
+
+---
+
+## 2026-09-23 — Phase 9.1 implements a Textual service-backed shell
+
+**Version and launch**: `textual>=8.2,<9` resolved to 8.2.8. The new
+`quotapilot tui` Typer adapter imports Textual lazily and rejects ordinary
+non-TTY launch without emitting control sequences. Bare `quotapilot` remains
+help. A hidden offline smoke mounts the installed TUI without provider access.
+
+**Presentation boundary**: `tui/state.py` and the plain Overview ViewModel own
+privacy-safe immutable display state and service sequencing. Widgets perform no
+provider, SQLite, budget, or routing work. Startup mounts the shell, publishes a
+persisted `StatusReport`, inspects provider status, then runs one safe live
+refresh only for an already connected/authenticated OpenAI Codex adapter.
+Manual refresh follows the same path and overlapping requests coalesce.
+
+**Interaction and adaptation**: One key registry supplies Textual bindings,
+footer hints, and contextual Help. Printable hjkl/q/?/r bindings are
+non-priority and additionally guarded when Input or TextArea owns focus. The
+rail remains at 88+ columns, compact widths use a modal destination list, and
+unsafe dimensions show a resize guard while Help/Quit remain available.
+
+**System theme spike**: Textual 8.2.8 `Theme(ansi=True)` requires ANSI theme
+variables and still does not establish reliable terminal-background
+brightness. System therefore registers an explicit Dark-equivalent theme and
+reports `Resolved: Dark`; QuotaPilot does not inspect `COLORFGBG` or guess.
+Dark and Light use separate contrast-oriented semantic palettes.
+
+**Localization and scope**: The pure locale resolver moved from the Qt module
+to `quotapilot.localization`. The TUI loads validated, key-identical English
+and Japanese YAML catalogs and uses Rich cell measurement for elision. Only
+Overview and the global shell are functional in Phase 9.1; the other seven
+destinations are honest Phase 9.2 placeholders.
+
+## 2026-09-24 — Phase 9.2A binds TUI approval to every changed plan
+
+**Service boundary**: Route calls `RoutingService` and Execute calls
+`ExecutionService` directly. Models uses persisted snapshots, capability
+enrichment, and privacy-safe `capability_views`. The TUI owns session-only task,
+plan, and result state; no new routing or execution policy is introduced.
+Synchronous pure routing, enrichment, and planning work is offloaded with
+`asyncio.to_thread` so larger catalogs do not block Textual input rendering.
+
+**Approval**: The initial Execute confirmation starts on Cancel. A user gesture
+authorizes only the displayed `ExecutionPlan`. `ExecutionService.run_plan` now
+accepts an optional `plan_change_handler` for interactive clients. On a
+materially changed escalation plan, the TUI displays the new model, effort,
+directory, and policy context, then requires a separate gesture even when the
+core policy would otherwise permit a low-risk automatic step. Existing CLI/GUI
+callers that omit this handler retain their behavior. The core still performs
+quota and capability revalidation before adapter invocation.
+
+**Execution lifetime**: The active run is application-owned. The TUI keeps
+Execute visible while it runs; Esc cancels through the existing adapter
+cleanup path. Quit requires a modal with Continue running as the initial
+focus. Dry Run only builds a Phase 6 plan and never calls the adapter.
+
+**Task editor shortcut**: Ctrl+Enter is a tested Textual shortcut when the
+terminal transmits a distinct key. Tab to Analyze and Enter is the dependable
+path across terminals; plain Enter stays multiline input.
+
+## 2026-09-24 — TUI interaction identity uses navy/blue; green means success
+
+**Decision**: Dark and Light Textual themes use centralized navy/blue tokens
+for primary actions, focus, selection, links, and input selection. Dark uses
+deep navy-black and blue-gray surfaces; Light uses quiet off-white surfaces.
+Highlighted rows use a subtle blue surface with bold text and retain their
+existing `>` marker. System still resolves explicitly to the Dark palette.
+
+**Semantic boundary**: Green is reserved for an explicit successful execution
+result. OVER and STALE retain amber, CRITICAL and ERROR retain red, and UNKNOWN
+remains neutral gray. Normal provider connection, ordinary quota values, and
+Fresh/Routable model labels do not acquire success green. The QML GUI palette
+and all TUI behavior and layout remain unchanged.
+
+## 2026-09-24 — Phase 9.2B secondary TUI screens use existing data boundaries
+
+**Usage and History**: Both read a bounded number of privacy-transformed
+`UsageSnapshot`s through the repository protocol and evaluate pace with the
+existing `BudgetEngine`. A trend appears only after three comparable samples;
+missing actual/expected data stays Unknown. Execution history remains an
+explicit empty state because Phase 6 does not persist an audit.
+
+**Settings**: The TUI stages edits in one strict `AppConfig` and writes only
+validated candidates through `save_user_config`. Explicit save, discard, and
+next-launch application prevent a partial runtime service-graph change.
+Appearance also applies on next launch because current Textual screens compose
+localized labels at mount; runtime retranslation would otherwise be incomplete.
+
+**Doctor**: The existing offline `DoctorService` runs in a worker thread because
+its canonical checks include bounded synchronous subprocess calls. No live
+provider capture is started by opening or rerunning the screen. Diagnostic
+statuses and check identities remain those of the service; the screen maps
+known summaries/remediations to Japanese while preserving the service wording
+for English and unknown future checks. It adds safe navigation actions without
+exposing raw output.

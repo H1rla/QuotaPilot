@@ -537,6 +537,39 @@ async def test_validation_failure_follows_route_escalation_with_new_approval(
 
 
 @pytest.mark.asyncio
+async def test_interactive_plan_change_requires_new_approval_even_in_auto_mode(
+    tmp_path: Path,
+) -> None:
+    policy = ExecutionPolicy(
+        mode=ExecutionMode.AUTO_FOR_LOW_RISK,
+        low_risk_max_complexity=1.0,
+        low_risk_max_ambiguity=1.0,
+        low_risk_max_failure_cost=1.0,
+        low_risk_min_verifiability=0.0,
+    )
+    adapter = _Adapter([FailureClass.VALIDATION, None])
+    service, _provider = _service(
+        tmp_path, _Contexts(_context(), [_context()]), adapter, policy=policy
+    )
+    changed: list[ExecutionPlan] = []
+
+    async def reject_changed(candidate: ExecutionPlan) -> bool:
+        changed.append(candidate)
+        return False
+
+    plan = await service.create_plan(TASK, working_directory=tmp_path, dry_run=False)
+    result = await service.run_plan(
+        plan, approval_handler=reject_changed, plan_change_handler=reject_changed
+    )
+
+    assert result.status is ExecutionStatus.DENIED
+    assert adapter.execute_count == 1
+    assert len(changed) == 1
+    assert changed[0].model_id == "strong"
+    assert changed[0] != plan
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize(
     "models",
     [
