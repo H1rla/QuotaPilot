@@ -370,8 +370,9 @@ quitting or cancelling must invoke and await the existing cleanup path.
 ### 7.4 Usage
 
 MUST show actual, expected, delta, state, and reset for persisted samples.
-Charts are optional and must not interpolate missing data. Repository reads are
-bounded. Budget evaluation uses the existing engine.
+The primary Usage visualization is the shared left-to-right daily forecast
+strip; narrow terminals may wrap chronological groups into two rows.
+Repository reads are bounded. Budget evaluation uses the existing engine.
 
 ### 7.5 Models
 

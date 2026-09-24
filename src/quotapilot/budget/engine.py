@@ -120,7 +120,7 @@ class BudgetEngine:
                 warnings.append("reset_time_passed")
             if actual is not None:
                 pace_delta = actual - expected
-                state = self._classify(pace_delta)
+                state = self.classify_pace_delta(pace_delta)
                 pressure = self._pressure(state)
         else:
             warnings.append("pace_timing_unavailable")
@@ -202,7 +202,8 @@ class BudgetEngine:
 
         return None
 
-    def _classify(self, pace_delta: float) -> BudgetState:
+    def classify_pace_delta(self, pace_delta: float) -> BudgetState:
+        """Apply the configured budget policy to an observed or projected delta."""
         config = self._config
         if pace_delta < config.very_under_threshold:
             return BudgetState.VERY_UNDER
@@ -213,6 +214,21 @@ class BudgetEngine:
         if pace_delta <= config.critical_threshold:
             return BudgetState.OVER
         return BudgetState.CRITICAL
+
+    def expected_fraction_at(self, pool: QuotaPool, *, at: datetime) -> float | None:
+        """Return reserve-aware cumulative expected usage at an instant."""
+        bounds = self.window_bounds(pool)
+        if bounds is None:
+            return None
+        start, reset = bounds
+        at_utc = at.astimezone(UTC)
+        progress = (at_utc - start).total_seconds() / (reset - start).total_seconds()
+        return min(1.0, max(0.0, progress)) * (1.0 - self._config.reserve_fraction)
+
+    def window_bounds(self, pool: QuotaPool) -> tuple[datetime, datetime] | None:
+        """Expose the same authoritative UTC window used by current-state evaluation."""
+        timing = self._resolve_timing(pool, [])
+        return (timing.start, timing.reset) if timing is not None else None
 
     def _pressure(self, state: BudgetState) -> float | None:
         return {

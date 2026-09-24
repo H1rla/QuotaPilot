@@ -1185,3 +1185,21 @@ statuses and check identities remain those of the service; the screen maps
 known summaries/remediations to Japanese while preserving the service wording
 for English and unknown future checks. It adds safe navigation actions without
 exposing raw output.
+
+## 2026-09-25 — Shared daily forecast replaces Usage graphs
+
+**Decision**: GUI Usage and Overview no longer draw historical actual versus
+expected lines; TUI Usage no longer draws a recent-actual sparkline. A single
+pure `DailyForecastService` supplies both. History still retains and displays
+persisted snapshots. Existing CLI/JSON output stays unchanged.
+
+**Evidence**: At least two same-window normalized usage observations on the
+configured local current day, spanning at least one actual UTC hour, are
+required. Decreasing usage or incompatible timing is rejected. The observed
+delta divided by the elapsed fraction of today's actual local-day duration
+defines one full-day rate. Projection begins at the latest observation; each
+daily endpoint is local midnight or reset, whichever comes first. Seven points
+is the maximum. A reset exactly at local midnight belongs to the preceding
+point. Budget Engine expected pace, reserve and state thresholds remain
+authoritative. Persisted stale data remains marked STALE. Unknown inputs yield
+no invented forecast. This is a pace projection, not a guarantee.

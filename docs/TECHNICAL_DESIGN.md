@@ -1629,6 +1629,19 @@ destinations as Phase 9.2 placeholders; later phases replaced all of them.
 
 ## 34. Phase 9.2B secondary terminal screens
 
+Post-v0.1.0 Usage uses `budget/forecast.py` as its one provider-independent
+forecast implementation for GUI and TUI. It reads bounded persisted normalized
+snapshots, requires two compatible observations at least one UTC hour apart on
+the current configured local day, and derives a full-day rate from their usage
+delta divided by their elapsed fraction of that day's actual UTC length.
+Today accumulates from the latest observation to the earlier of local midnight
+or reset; later days add that daily rate weighted by each day's elapsed
+fraction until reset. The horizon is at most seven points and never enters the
+next window. Expected usage and states use the configured Budget Engine reserve
+and thresholds. Values above 100% remain numeric; absent evidence yields an
+explicit unavailable reason. Provider availability does not trigger a forecast
+RPC; persisted input can yield a visibly STALE forecast. CLI JSON is unchanged.
+
 Usage and History project bounded privacy-safe persisted snapshots through the
 repository protocol and existing `BudgetEngine`; neither screen performs
 provider RPC or creates execution audit data. Settings stages changes in the

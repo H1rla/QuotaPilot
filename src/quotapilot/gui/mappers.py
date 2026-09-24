@@ -7,6 +7,7 @@ from collections.abc import Iterable
 from datetime import datetime
 from typing import Any
 
+from quotapilot.budget.forecast import DailyForecast
 from quotapilot.budget.models import BudgetReport, PoolBudgetAssessment
 from quotapilot.capabilities.models import ModelCapabilityView
 from quotapilot.execution.models import ExecutionPlan, ExecutionResult
@@ -33,9 +34,7 @@ _EXPLANATION_PATTERNS = (
         "Quota pressure %1 (%2) contributed a %3 cost penalty.",
     ),
     (
-        re.compile(
-            r"^(.+) meets the capability floor (.+) and has the highest policy utility\.$"
-        ),
+        re.compile(r"^(.+) meets the capability floor (.+) and has the highest policy utility\.$"),
         "%1 meets the capability floor %2 and has the highest policy utility.",
     ),
     (
@@ -115,9 +114,7 @@ def map_overview(report: StatusReport | None) -> dict[str, Any]:
         "todayBudget": fraction(pool.today_budget_fraction if pool else None),
         "pressure": decimal(report.effective_pressure),
         "pressureValue": report.effective_pressure,
-        "routableModels": (
-            f"{report.profile.routable_model_count} / {report.profile.model_count}"
-        ),
+        "routableModels": (f"{report.profile.routable_model_count} / {report.profile.model_count}"),
         "profileFreshness": report.profile.freshness.value.upper(),
         "freshness": freshness,
         "freshnessAge": age(report.snapshot_age_seconds),
@@ -169,7 +166,8 @@ def map_provider_status(status: ProviderStatus | None) -> dict[str, Any]:
         "authentication": (
             "Codex CLI"
             if status.authentication is ProviderAuthentication.AUTHENTICATED
-            else label if status.authentication is ProviderAuthentication.NOT_AUTHENTICATED
+            else label
+            if status.authentication is ProviderAuthentication.NOT_AUTHENTICATED
             else "Unknown"
         ),
         "lastRefresh": timestamp(status.last_refresh_at),
@@ -191,26 +189,42 @@ def map_pool_assessment(pool: PoolBudgetAssessment) -> dict[str, Any]:
         "expected": pool.expected_usage,
         "expectedText": fraction(pool.expected_usage),
         "delta": pool.pace_delta,
-        "deltaText": (
-            "Unknown" if pool.pace_delta is None else f"{pool.pace_delta:+.1%}"
-        ),
+        "deltaText": ("Unknown" if pool.pace_delta is None else f"{pool.pace_delta:+.1%}"),
         "state": pool.state.value.upper(),
         "reset": timestamp(pool.resets_at),
         "warnings": list(pool.warnings),
     }
 
 
+def map_daily_forecast(forecast: DailyForecast) -> list[dict[str, Any]]:
+    return [
+        {
+            "date": point.date.isoformat(),
+            "weekday": point.date.weekday(),
+            "today": point.is_today,
+            "projected": point.projected_used_fraction,
+            "projectedText": f"{point.projected_used_fraction:.0%}",
+            "remainingText": f"{point.projected_remaining_fraction:.0%}",
+            "expectedText": f"{point.expected_used_fraction:.0%}",
+            "deltaText": f"{point.delta_from_expected:+.0%}",
+            "statusValue": point.state.value.upper(),
+            "endsAtReset": point.ends_at_reset,
+        }
+        for point in forecast.points
+    ]
+
+
 def map_usage_point(
     captured_at: datetime,
     pool: PoolBudgetAssessment | None,
 ) -> dict[str, Any]:
+    """Retain the persisted History row mapping; Usage no longer charts it."""
     return {
         "capturedAt": captured_at.isoformat(),
         "capturedText": timestamp(captured_at),
         "actual": pool.actual_usage if pool is not None else None,
         "expected": pool.expected_usage if pool is not None else None,
         "delta": pool.pace_delta if pool is not None else None,
-        "state": pool.state.value.upper() if pool is not None else "UNKNOWN",
         "statusValue": pool.state.value.upper() if pool is not None else "UNKNOWN",
         "actualText": fraction(pool.actual_usage if pool is not None else None),
         "expectedText": fraction(pool.expected_usage if pool is not None else None),
@@ -230,9 +244,7 @@ def map_models(views: Iterable[ModelCapabilityView]) -> list[dict[str, Any]]:
             "effort": ", ".join(view.effort_order or ()) or "Unknown",
             "profile": view.profile_name or "Unknown",
             "source": view.profile_source.value if view.profile_source else "Unknown",
-            "confidence": (
-                view.profile_confidence.value if view.profile_confidence else "Unknown"
-            ),
+            "confidence": (view.profile_confidence.value if view.profile_confidence else "Unknown"),
             "verified": view.verified_at.isoformat() if view.verified_at else "Unknown",
             "freshness": view.freshness.value.upper() if view.freshness else "UNKNOWN",
             "stale": bool(view.freshness and view.freshness.value == "stale"),
@@ -290,8 +302,7 @@ def map_execution_plan(plan: ExecutionPlan) -> dict[str, Any]:
         "dryRun": plan.dry_run,
         "taskClass": plan.task_class.value,
         "escalation": [
-            f"{step.model_id} · {step.effort or 'default'}"
-            for step in plan.escalation_path
+            f"{step.model_id} · {step.effort or 'default'}" for step in plan.escalation_path
         ],
         "warnings": list(plan.warnings),
     }

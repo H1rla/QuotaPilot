@@ -48,6 +48,8 @@ def test_gui_runtime_dependency_and_qml_assets_are_present() -> None:
     )
     assert (qml / "Main.qml").is_file()
     assert (qml / "Tokens.js").is_file()
+    assert (qml / "components" / "ForecastStrip.qml").is_file()
+    assert not (qml / "components" / "UsageChart.qml").exists()
     assert {
         "Overview.qml",
         "Usage.qml",

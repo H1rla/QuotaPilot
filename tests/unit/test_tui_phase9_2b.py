@@ -120,13 +120,13 @@ async def test_usage_projection_actual_expected_unknown_stale_and_no_snapshot() 
     assert state.latest is not None
     assert state.latest.pool.actual_usage == 0.68
     assert state.latest.pool.expected_usage is not None
-    assert len(state.trend) == 3
+    assert state.forecast is not None
     repo.snapshots = (snapshot(used=None, timing=False),)
     state = await vm.load(lambda _state: None)
     assert state.latest is not None
     assert state.latest.pool.actual_usage is None
     assert state.latest.pool.expected_usage is None
-    assert not state.trend
+    assert state.forecast is not None and not state.forecast.points
     repo.snapshots = (snapshot(minutes_ago=60),)
     state = await vm.load(lambda _state: None)
     assert state.latest is not None and state.latest.stale

@@ -617,7 +617,8 @@ another read-only screen does not silently cancel or orphan the task.
 
 ## 17. Usage
 
-Usage prioritizes actual pace versus expected pace:
+Usage keeps compact actual/expected summary values, then prioritizes a daily
+end-of-day forecast from left to right:
 
 ```text
 Actual      68.0%
@@ -626,13 +627,18 @@ Delta       +6.5%
 State       ON TRACK
 Reset       4d 08h
 
-actual    ▁▂▂▃▄▅▆▆▇
-expected  ·········
+Forecast — today's pace (projected day end)
+Today       Fri         Sat         Sun
+52%         76%         100%        124%
+ON TRACK    OVER        CRITICAL    CRITICAL
 ```
 
-Show a sparkline only when at least three comparable persisted samples exist
-and the cell width makes the trend legible. Every chart has adjacent textual
-values. Missing samples are gaps, never interpolated zeroes.
+The numbers above are illustrative. The shared forecast service derives real
+values from today's persisted observations and the configured budget policy.
+At 140 and 100 columns prefer one row. At 80 columns group into at most two
+chronological rows, without horizontal scrolling. Normal cells show day,
+projected percentage, and state; Ctrl+D reveals expected usage, delta,
+remaining quota, date, and source. Unavailable and STALE are explicit.
 
 At standard and compact widths, quota pools are a vertical list. Enter opens
 one pool's technical details. Raw window metadata and provenance are Details

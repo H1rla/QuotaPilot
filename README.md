@@ -113,8 +113,10 @@ starting the execution adapter. Execute opens a plan showing the working
 directory, quota context, timeout, attempts, and warning; Cancel has initial
 focus. Move focus to Approve & Execute to start a real run. Esc cancels, and
 any changed escalation plan asks for separate approval. Models offers a local
-`/` filter and detail view. Usage shows actual versus expected pace and a
-bounded trend. History lists privacy-safe usage snapshots; execution history
+`/` filter and detail view. Usage shows actual versus expected summary values
+and a daily quota forecast. The daily forecast is a projection based on the
+current day's observed usage pace, not a guarantee. History lists privacy-safe
+usage snapshots; execution history
 is explicitly empty because no execution audit is persisted. Settings offers
 strict category-based editing with explicit atomic save; saved TUI settings
 take effect on the next launch. Doctor runs offline checks by default.

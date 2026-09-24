@@ -175,3 +175,12 @@ caused a mounted-screen failure.
 **Why**: Textual calls these methods internally during composition and repaint.
 **Rule going forward**: Use distinct helper names such as `update_editor_state`
 and `_render_state`; mount every new screen in Pilot before deeper tests.
+
+## 2026-09-25 — Partial-day quota observations need elapsed-time normalization
+**What happened**: A simple daily increment from today's usage delta would
+misread a few hours of observations as a full day's pace.
+**Why**: Snapshot deltas are measured over actual instants while displayed
+forecast points follow local calendar days, which may be 23 or 25 hours.
+**Rule going forward**: Require an evidence interval, normalize it by today's
+actual UTC duration, and cap each forecast interval at the local day/reset
+boundary before projecting cumulative usage.

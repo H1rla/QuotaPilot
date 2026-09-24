@@ -260,7 +260,7 @@ def test_invalid_reserve_is_rejected(reserve: float) -> None:
     ],
 )
 def test_state_threshold_boundaries(delta: float, expected_state: BudgetState) -> None:
-    state = BudgetEngine(BudgetConfig(reserve_fraction=0.0))._classify(delta)
+    state = BudgetEngine(BudgetConfig(reserve_fraction=0.0)).classify_pace_delta(delta)
 
     assert state is expected_state
 
@@ -281,7 +281,7 @@ def test_state_threshold_boundaries(delta: float, expected_state: BudgetState) -
 def test_state_threshold_immediate_float_neighbors(
     delta: float, expected_state: BudgetState
 ) -> None:
-    assert BudgetEngine()._classify(delta) is expected_state
+    assert BudgetEngine().classify_pace_delta(delta) is expected_state
 
 
 def test_spring_forward_uses_elapsed_instants_for_pace() -> None:

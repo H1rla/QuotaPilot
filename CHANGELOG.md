@@ -7,6 +7,10 @@ Semantic Versioning while pre-1.0 interfaces may still evolve.
 
 ### Added
 
+- Replaced GUI and TUI Usage graphs with a shared, reset-bounded daily quota
+  forecast based on today's persisted observation pace, with explicit
+  insufficient-data and STALE states.
+
 - Linux XDG desktop entry and install instructions for launching
   `quotapilot gui` from `drun`-compatible application launchers, including
   graphical sessions whose `PATH` omits user-local binaries.

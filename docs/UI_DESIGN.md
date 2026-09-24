@@ -306,18 +306,9 @@ Technical metadata remains hidden.
 
 ## 13. Usage view
 
-Purpose:
-
-```text
-Actual usage vs Expected pace
-```
-
-Primary chart:
-
-- cumulative actual usage
-- expected usage line
-- reset marker
-- optional historical windows
+Purpose: show projected cumulative quota usage at the end of each remaining
+local day, from left to right. The primary visualization is the shared daily
+forecast strip, with at most seven points and no point beyond reset.
 
 Summary:
 
@@ -329,7 +320,12 @@ State
 Reset
 ```
 
-Do not overload the chart with every raw quota field.
+Each normal cell contains only day, projected percentage, and the existing
+BudgetState label. Details may add expected usage, delta, remaining quota, full
+date, and source/freshness. When evidence is insufficient or timing is unknown,
+show an explicit unavailable reason. Never clamp displayed percentages at 100%.
+At 1100 × 720 use one row; at narrower widths tighten spacing, then use a
+controlled two-row wrap. History retains persisted observations.
 
 ## 14. Models view
 
@@ -829,7 +825,7 @@ Do not optimize only for large desktop monitors.
 When width decreases:
 
 1. secondary metrics collapse,
-2. charts shrink,
+2. the forecast strip tightens or wraps into two chronological rows,
 3. optional details hide,
 4. primary actions remain accessible.
 

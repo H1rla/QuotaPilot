@@ -407,7 +407,7 @@ QuitExecutionOverlay {
     border: round $accent-focus;
 }
 
-#usage-main, #usage-trend, #usage-details,
+#usage-main, #usage-forecast, #usage-details,
 #history-detail, #history-message,
 #doctor-detail, #doctor-summary, #doctor-message,
 #settings-editor-title, #settings-message, #settings-apply-note {
@@ -418,6 +418,11 @@ QuitExecutionOverlay {
 
 #usage-main, #history-detail, #doctor-detail {
     margin-top: 1;
+}
+
+#usage-forecast {
+    margin-top: 2;
+    height: auto;
 }
 
 #usage-details, #history-detail, #doctor-detail {

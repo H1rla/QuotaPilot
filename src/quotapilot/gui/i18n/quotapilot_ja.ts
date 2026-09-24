@@ -365,7 +365,7 @@
     <message>
         <location filename="../qml/Overview.qml" line="89"/>
         <source>Today</source>
-        <translation>本日</translation>
+        <translation>今日</translation>
     </message>
     <message>
         <location filename="../qml/Overview.qml" line="94"/>
@@ -407,21 +407,6 @@
         <location filename="../qml/Overview.qml" line="148"/>
         <source>Data</source>
         <translation>データ</translation>
-    </message>
-    <message>
-        <location filename="../qml/Overview.qml" line="164"/>
-        <source>Actual usage vs expected pace</source>
-        <translation>実使用量と想定ペース</translation>
-    </message>
-    <message>
-        <location filename="../qml/Overview.qml" line="168"/>
-        <source>— actual</source>
-        <translation>— 実績</translation>
-    </message>
-    <message>
-        <location filename="../qml/Overview.qml" line="169"/>
-        <source>- - expected</source>
-        <translation>- - 想定</translation>
     </message>
     <message>
         <location filename="../qml/Overview.qml" line="178"/>
@@ -667,11 +652,6 @@
         <location filename="../qml/Usage.qml" line="16"/>
         <source>Usage</source>
         <translation>使用量</translation>
-    </message>
-    <message>
-        <location filename="../qml/Usage.qml" line="17"/>
-        <source>Persisted snapshots only · missing points are not inferred</source>
-        <translation>保存済みスナップショットのみ · 欠落点は補間しません</translation>
     </message>
     <message>
         <location filename="../qml/Usage.qml" line="18"/>
@@ -1035,6 +1015,106 @@
         <location filename="../qml/Main.qml" line="95"/>
         <source>Open Route</source>
         <translation>ルートを開く</translation>
+    </message>
+    <message>
+        <location filename="../qml/Usage.qml" line="11"/>
+        <source>Projected end of each day from observed usage pace</source>
+        <translation>観測された使用ペースから各日末を予測</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ForecastStrip.qml" line="17"/>
+        <source>Mon</source>
+        <translation>月</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ForecastStrip.qml" line="18"/>
+        <source>Tue</source>
+        <translation>火</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ForecastStrip.qml" line="19"/>
+        <source>Wed</source>
+        <translation>水</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ForecastStrip.qml" line="20"/>
+        <source>Thu</source>
+        <translation>木</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ForecastStrip.qml" line="21"/>
+        <source>Fri</source>
+        <translation>金</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ForecastStrip.qml" line="22"/>
+        <source>Sat</source>
+        <translation>土</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ForecastStrip.qml" line="23"/>
+        <source>Sun</source>
+        <translation>日</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ForecastStrip.qml" line="29"/>
+        <source>VERY UNDER</source>
+        <translation>大幅に余裕</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ForecastStrip.qml" line="31"/>
+        <source>ON TRACK</source>
+        <translation>予定どおり</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ForecastStrip.qml" line="40"/>
+        <source>Insufficient data to estimate today&apos;s pace.</source>
+        <translation>今日のペースを推定するデータが不足しています。</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ForecastStrip.qml" line="41"/>
+        <source>Reset is unknown.</source>
+        <translation>リセット時刻が不明です。</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ForecastStrip.qml" line="42"/>
+        <source>Quota is unknown.</source>
+        <translation>クォータが不明です。</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ForecastStrip.qml" line="43"/>
+        <source>Quota window has ended.</source>
+        <translation>クォータ期間は終了しました。</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ForecastStrip.qml" line="44"/>
+        <source>Forecast unavailable</source>
+        <translation>予測できません</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ForecastStrip.qml" line="53"/>
+        <source>Forecast — today&apos;s pace</source>
+        <translation>予測 — 今日のペース</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ForecastStrip.qml" line="55"/>
+        <source>Based on persisted data · STALE</source>
+        <translation>保存済みデータに基づく · STALE</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ForecastStrip.qml" line="92"/>
+        <source>Remaining</source>
+        <translation>残り</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ForecastStrip.qml" line="98"/>
+        <source>Based on persisted data</source>
+        <translation>保存済みデータに基づく</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ForecastStrip.qml" line="98"/>
+        <source>Projected end of each day</source>
+        <translation>各日末の予測</translation>
     </message>
 </context>
 </TS>

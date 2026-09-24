@@ -409,21 +409,6 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Overview.qml" line="164"/>
-        <source>Actual usage vs expected pace</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../qml/Overview.qml" line="168"/>
-        <source>— actual</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../qml/Overview.qml" line="169"/>
-        <source>- - expected</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <location filename="../qml/Overview.qml" line="178"/>
         <source>Suggested</source>
         <translation type="unfinished"></translation>
@@ -666,11 +651,6 @@
     <message>
         <location filename="../qml/Usage.qml" line="16"/>
         <source>Usage</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../qml/Usage.qml" line="17"/>
-        <source>Persisted snapshots only · missing points are not inferred</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -1034,6 +1014,106 @@
         <location filename="../qml/Main.qml" line="39"/>
         <location filename="../qml/Overview.qml" line="33"/>
         <source>Snapshot %1 ago</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/Usage.qml" line="11"/>
+        <source>Projected end of each day from observed usage pace</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ForecastStrip.qml" line="17"/>
+        <source>Mon</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ForecastStrip.qml" line="18"/>
+        <source>Tue</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ForecastStrip.qml" line="19"/>
+        <source>Wed</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ForecastStrip.qml" line="20"/>
+        <source>Thu</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ForecastStrip.qml" line="21"/>
+        <source>Fri</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ForecastStrip.qml" line="22"/>
+        <source>Sat</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ForecastStrip.qml" line="23"/>
+        <source>Sun</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ForecastStrip.qml" line="29"/>
+        <source>VERY UNDER</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ForecastStrip.qml" line="31"/>
+        <source>ON TRACK</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ForecastStrip.qml" line="40"/>
+        <source>Insufficient data to estimate today&apos;s pace.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ForecastStrip.qml" line="41"/>
+        <source>Reset is unknown.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ForecastStrip.qml" line="42"/>
+        <source>Quota is unknown.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ForecastStrip.qml" line="43"/>
+        <source>Quota window has ended.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ForecastStrip.qml" line="44"/>
+        <source>Forecast unavailable</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ForecastStrip.qml" line="53"/>
+        <source>Forecast — today&apos;s pace</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ForecastStrip.qml" line="55"/>
+        <source>Based on persisted data · STALE</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ForecastStrip.qml" line="92"/>
+        <source>Remaining</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ForecastStrip.qml" line="98"/>
+        <source>Based on persisted data</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ForecastStrip.qml" line="98"/>
+        <source>Projected end of each day</source>
         <translation type="unfinished"></translation>
     </message>
 </context>

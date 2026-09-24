@@ -7,7 +7,7 @@
 
 - Date: 2026-09-25
 - Last agent: Codex
-- Current phase: **post-v0.1.0 usability maintenance**
+- Current phase: **post-v0.1.0 daily forecast implementation**
 - Phase 2 provider boundary: **COMPLETE**
 - Phase 3/3.1 persistence boundary: **COMPLETE**
 - Phase 4/4.1 budget boundary: **COMPLETE**
@@ -25,6 +25,38 @@
 - Phase 9.2B Usage/History/Settings/Doctor: **COMPLETE**
 - Release readiness: **v0.1.0 publicly released**
 - Publishing/tag/GitHub release: **v0.1.0 published; no later release performed**
+- Daily quota forecast: **implemented in GUI and TUI; pending final CI verification**
+
+## Post-v0.1.0 daily forecast handoff
+
+- `src/quotapilot/budget/forecast.py` is the shared, deterministic forecast
+  service. It uses two compatible observations from the current configured
+  local day, at least one actual UTC hour apart. It normalizes the observed
+  usage delta by today's actual local-day duration, then accumulates to each
+  local day endpoint or reset, whichever comes first. It stops after seven
+  points and never clamps numeric overrun. Expected usage, reserve and state
+  policy come from `BudgetEngine`. Insufficient/unknown/incompatible timing is
+  explicit; persisted STALE data stays marked STALE.
+- GUI `Usage.qml` and `Overview.qml` use `ForecastStrip.qml`. The old
+  `UsageChart.qml` and GUI graph-only ViewModel points are removed. TUI
+  `screens/usage.py` uses the same forecast model in horizontal groups;
+  sparkline rendering and the `trend` property are removed. History persistence
+  and History's row mapper remain intact. English/Japanese resources were
+  updated. CLI/JSON contracts were left unchanged.
+- Focused tests: `tests/unit/test_daily_forecast.py`,
+  `tests/unit/test_forecast_qml.py`, and `tests/unit/test_forecast_ui.py` cover
+  arithmetic, reset/DST, GUI/TUI parity, localization, width, details, stale,
+  unavailable, overrun and Textual color/resize modes. Existing budget,
+  persistence, GUI, TUI and packaging tests also passed in the full suite.
+- Latest completed validation: `uv run pytest -q` → 565 passed, 5 skipped;
+  `uv run ruff check .` → pass; `uv run pyright` → 0 errors;
+  `git diff --check` → pass; `uv build` → pass; `pyside6-qmllint` → exit 0.
+  Installed-wheel GUI offscreen smokes at 1100×720 and 900×600, TUI smoke,
+  and wheel resource check passed. A final rerun after the last localization
+  adjustment and GitHub Actions verification remains.
+- Next action: rerun final validation, inspect the full diff/status, commit the
+  feature, push `main` without tags, and watch the CI run to success. No known
+  external blocker. The published v0.1.0 tag/release must stay untouched.
 
 The implemented Phase 7 contract is
 `docs/PHASE7_PRODUCTIZATION_CONTRACT.md`. The reusable pre-publication gate is

@@ -149,17 +149,7 @@ PageScrollView {
             FlatButton { text: qsTranslate("Global", "Route a task"); onClicked: appController.navigate("Route") }
         }
 
-        ColumnLayout {
-            Layout.fillWidth: true
-            spacing: Tokens.space.md
-            SectionHeader { text: qsTranslate("Global", "Actual usage vs expected pace") }
-            UsageChart { Layout.fillWidth: true; points: usageViewModel.points }
-            RowLayout {
-                spacing: Tokens.space.xl
-                Text { text: qsTranslate("Global", "— actual"); color: Tokens.color.accent; font.family: Tokens.font.mono; font.pixelSize: Tokens.type.caption }
-                Text { text: qsTranslate("Global", "- - expected"); color: Tokens.color.textMuted; font.family: Tokens.font.mono; font.pixelSize: Tokens.type.caption }
-            }
-        }
+        ForecastStrip { Layout.fillWidth: true; points: usageViewModel.points; unavailableReason: usageViewModel.forecastReason; stale: usageViewModel.forecastStale; detailsVisible: appController.detailsVisible }
 
         Rectangle { Layout.fillWidth: true; implicitHeight: 1; color: Tokens.color.border }
 

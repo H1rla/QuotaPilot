@@ -1,7 +1,8 @@
-"""Actual versus expected quota pace, with optional bounded trend."""
+"""Quota summary and left-to-right daily forecast strip."""
 
 from __future__ import annotations
 
+from rich.cells import set_cell_size
 from rich.text import Text
 from textual.app import ComposeResult
 from textual.containers import VerticalScroll
@@ -10,8 +11,6 @@ from textual.widgets import Static
 from quotapilot.tui.localization import Localizer
 from quotapilot.tui.state import ViewStatus
 from quotapilot.tui.viewmodels.usage import UsageState
-
-_SPARK = "▁▂▃▄▅▆▇█"
 
 
 class UsageView(VerticalScroll):
@@ -29,7 +28,7 @@ class UsageView(VerticalScroll):
         yield Static(self._localizer.text("destination.usage"), classes="screen-title")
         yield Static("", id="usage-message", classes="notice")
         yield Static("", id="usage-main")
-        yield Static("", id="usage-trend", classes="muted")
+        yield Static("", id="usage-forecast")
         yield Static("", id="usage-details", classes="muted")
 
     def on_mount(self) -> None:
@@ -59,7 +58,7 @@ class UsageView(VerticalScroll):
         main = self.query_one("#usage-main", Static)
         if latest is None:
             main.update(t("usage.no_snapshot"))
-            self.query_one("#usage-trend", Static).update("")
+            self.query_one("#usage-forecast", Static).update(t("usage.forecast_unavailable"))
             self.query_one("#usage-details", Static).update("")
             return
         pool = latest.pool
@@ -113,15 +112,27 @@ class UsageView(VerticalScroll):
                 stale_start + len(stale_label),
             )
         main.update(body)
-        trend = state.trend
-        chart = (
-            ""
-            if self.compact or len(trend) < 3
-            else "".join(_SPARK[min(7, max(0, round(value * 7)))] for value in trend)
-        )
-        self.query_one("#usage-trend", Static).update(
-            t("usage.trend", chart=chart) if chart else ""
-        )
+        forecast = state.forecast
+        if forecast is None or not forecast.points:
+            reason = (
+                forecast.unavailable_reason.value
+                if forecast and forecast.unavailable_reason
+                else ""
+            )
+            explanation = (
+                t("usage.insufficient_evidence")
+                if reason in {"insufficient_evidence", "incompatible_window"}
+                else t("usage.forecast_unavailable")
+            )
+            forecast_text = Text(t("usage.forecast_title") + "\n" + explanation)
+            if forecast is not None and forecast.stale:
+                forecast_text.append(
+                    "\n" + t("usage.forecast_stale"),
+                    style=self.app.current_theme.variables["stale"],
+                )
+        else:
+            forecast_text = self._render_forecast(state)
+        self.query_one("#usage-forecast", Static).update(forecast_text)
         details = ""
         if self.details_open:
             captured = latest.captured_at.astimezone().strftime("%Y-%m-%d %H:%M")
@@ -135,4 +146,69 @@ class UsageView(VerticalScroll):
                     f"{t('usage.source')}: {source}",
                 )
             )
+            if forecast is not None and forecast.points:
+                details += "\n" + t("usage.forecast_basis")
+                for point in forecast.points:
+                    details += (
+                        "\n"
+                        + point.date.isoformat()
+                        + f"  {t('usage.projected')} {point.projected_used_fraction:.0%}"
+                        + f"  {t('usage.expected')} {point.expected_used_fraction:.0%}"
+                        + f"  {t('usage.delta')} {point.delta_from_expected:+.0%}"
+                        + f"  {t('usage.remaining')} {point.projected_remaining_fraction:.0%}"
+                    )
         self.query_one("#usage-details", Static).update(details)
+
+    def _render_forecast(self, state: UsageState) -> Text:
+        forecast = state.forecast
+        assert forecast is not None
+        t = self._localizer.text
+        result = Text(t("usage.forecast_title") + "\n")
+        if forecast.stale:
+            result.append(
+                t("usage.forecast_stale") + "\n", style=self.app.current_theme.variables["stale"]
+            )
+        points = forecast.points
+        # One row at standard widths; at 80 columns the second chronological
+        # group starts below the first without terminal horizontal scrolling.
+        available = max(20, self.size.width)
+        cell_width = 10
+        per_row = 4 if self.compact else max(1, min(7, (available + 1) // (cell_width + 1)))
+        weekdays = (
+            "usage.mon",
+            "usage.tue",
+            "usage.wed",
+            "usage.thu",
+            "usage.fri",
+            "usage.sat",
+            "usage.sun",
+        )
+        for start in range(0, len(points), per_row):
+            group = points[start : start + per_row]
+            if start:
+                result.append("\n")
+            for field in ("day", "value", "state"):
+                for index, point in enumerate(group):
+                    if index:
+                        result.append(" ")
+                    if field == "day":
+                        value = (
+                            t("usage.today")
+                            if point.is_today
+                            else t(weekdays[point.date.weekday()])
+                        )
+                    elif field == "value":
+                        value = f"{point.projected_used_fraction:.0%}"
+                    else:
+                        value = t(f"state.{point.state.value}")
+                    color = None
+                    if field == "state":
+                        if point.state.value == "over":
+                            color = self.app.current_theme.warning
+                        elif point.state.value == "critical":
+                            color = self.app.current_theme.error
+                        elif point.state.value == "unknown":
+                            color = self.app.current_theme.variables["muted"]
+                    result.append(set_cell_size(value, cell_width), style=color)
+                result.append("\n")
+        return result

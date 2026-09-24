@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 
 from quotapilot.budget.engine import BudgetEngine
+from quotapilot.budget.forecast import DailyForecast, DailyForecastService
 from quotapilot.budget.models import PoolBudgetAssessment
 from quotapilot.history.repository import SnapshotRepository
 from quotapilot.tui.state import ViewStatus
@@ -25,24 +26,11 @@ class UsageState:
     status: ViewStatus = ViewStatus.INITIAL
     samples: tuple[UsageSample, ...] = ()
     message_id: str | None = None
+    forecast: DailyForecast | None = None
 
     @property
     def latest(self) -> UsageSample | None:
         return self.samples[0] if self.samples else None
-
-    @property
-    def trend(self) -> tuple[float, ...]:
-        latest = self.latest
-        if latest is None or latest.pool.actual_usage is None:
-            return ()
-        comparable = [
-            sample.pool.actual_usage
-            for sample in reversed(self.samples)
-            if sample.pool.pool_id == latest.pool.pool_id
-            and sample.pool.actual_usage is not None
-            and sample.pool.expected_usage is not None
-        ]
-        return tuple(comparable[-16:]) if len(comparable) >= 3 else ()
 
 
 class UsageViewModel:
@@ -51,10 +39,12 @@ class UsageViewModel:
         repository: SnapshotRepository,
         budget: BudgetEngine,
         provider: str | None,
+        clock: Callable[[], datetime] | None = None,
     ) -> None:
         self._repository = repository
         self._budget = budget
         self._provider = provider
+        self._clock = clock or (lambda: datetime.now(UTC))
         self.state = UsageState()
         self.active = False
 
@@ -67,14 +57,16 @@ class UsageViewModel:
         if self.active:
             return self.state
         self.active = True
-        self.state = UsageState(ViewStatus.LOADING, self.state.samples)
+        self.state = UsageState(
+            ViewStatus.LOADING, self.state.samples, forecast=self.state.forecast
+        )
         publish(self.state)
         try:
             snapshots = await self._repository.list_snapshots(provider=self._provider, limit=limit)
-            now = datetime.now(UTC)
+            now = self._clock()
 
             # BudgetEngine remains the only source of pace and state calculations.
-            def project() -> tuple[UsageSample, ...]:
+            def project() -> tuple[tuple[UsageSample, ...], DailyForecast]:
                 rows: list[UsageSample] = []
                 for index, snapshot in enumerate(snapshots):
                     report = self._budget.evaluate(
@@ -86,16 +78,20 @@ class UsageViewModel:
                     )
                     if pool is not None:
                         rows.append(UsageSample(snapshot.captured_at, pool, report.is_stale))
-                return tuple(rows)
+                forecast = DailyForecastService(self._budget).calculate(snapshots, now=now)
+                return tuple(rows), forecast
 
-            samples = await asyncio.to_thread(project)
+            samples, forecast = await asyncio.to_thread(project)
             self.state = UsageState(
                 ViewStatus.READY if samples else ViewStatus.EMPTY,
                 samples,
                 None if samples else "usage.no_snapshot",
+                forecast,
             )
         except Exception:  # noqa: BLE001 - never display repository internals
-            self.state = UsageState(ViewStatus.ERROR, self.state.samples, "usage.error")
+            self.state = UsageState(
+                ViewStatus.ERROR, self.state.samples, "usage.error", self.state.forecast
+            )
         finally:
             self.active = False
         publish(self.state)

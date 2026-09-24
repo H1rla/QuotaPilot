@@ -105,7 +105,7 @@ pressure
 today budget
 routable models
 profile freshness
-usage chart
+daily quota forecast strip
 current recommendation if available
 ```
 
@@ -259,7 +259,9 @@ No generic card-heavy SaaS dashboard.
 
 Charts must be minimal.
 
-Usage visualization should prioritize actual vs expected.
+Usage visualization prioritizes the left-to-right daily quota forecast strip.
+Actual, expected, and delta remain compact summary metrics; History retains
+persisted actual observations.
 
 Do not add decorative charts without operational value.
 

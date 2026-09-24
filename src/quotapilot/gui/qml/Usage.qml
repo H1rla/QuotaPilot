@@ -1,5 +1,4 @@
 import QtQuick
-import QtQuick.Controls
 import QtQuick.Layouts
 import "Tokens.js" as Tokens
 import "components"
@@ -8,10 +7,9 @@ PageScrollView {
     id: page
     contentSpacing: Tokens.space.xl
         Text { text: qsTranslate("Global", "Usage"); color: Tokens.color.textPrimary; font.family: Tokens.font.ui; font.pixelSize: Tokens.type.title; font.weight: Font.DemiBold }
-        Text { text: qsTranslate("Global", "Persisted snapshots only · missing points are not inferred"); color: Tokens.color.textMuted; font.family: Tokens.font.mono; font.pixelSize: Tokens.type.caption }
+        Text { text: qsTranslate("Global", "Projected end of each day from observed usage pace"); color: Tokens.color.textMuted; font.family: Tokens.font.mono; font.pixelSize: Tokens.type.caption }
         InlineMessage { visible: usageViewModel.hasError; Layout.fillWidth: true; title: qsTranslate("Global", "Usage unavailable"); detail: usageViewModel.errorMessage }
         EmptyState { visible: usageViewModel.empty && !usageViewModel.busy; title: qsTranslate("Global", "No usage history"); detail: qsTranslate("Global", "Capture quota state to begin a local history.") }
-        UsageChart { visible: !usageViewModel.empty; Layout.fillWidth: true; Layout.preferredHeight: 260; points: usageViewModel.points }
         Repeater {
             model: usageViewModel.summary
             delegate: ColumnLayout {
@@ -30,4 +28,5 @@ PageScrollView {
                 MetricLine { label: qsTranslate("Global", "Reset"); value: modelData.reset; translateValue: true }
             }
         }
+        ForecastStrip { Layout.fillWidth: true; points: usageViewModel.points; unavailableReason: usageViewModel.forecastReason; stale: usageViewModel.forecastStale; detailsVisible: appController.detailsVisible }
 }
