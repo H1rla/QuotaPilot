@@ -659,3 +659,15 @@ package publication. Do not infer publication approval from this gate.
   build.
 - The fix remains post-v0.1.0 under `[Unreleased]`. Tag `v0.1.0` still resolves
   to `7f21756`; no release, tag, or publication operation was performed.
+
+## 2026-09-25 — Standalone developer-tool UI skill extraction
+
+- Distilled reusable GUI/TUI design, interaction, state, architecture, theme,
+  localization, responsiveness, and validation guidance into
+  `/tmp/developer-tool-ui/` and `/tmp/developer-tool-ui.zip`.
+- The skill is independent of this repository; no production code, existing
+  repository skill, or packaged UI asset was changed for the extraction.
+- Validated the skill format, relative Markdown links, complete requested file
+  tree, and absence of product-specific terms in the extracted files.
+- Next action: review the standalone skill and optionally install it in an
+  agent skill directory. It has not been installed into this repository.
