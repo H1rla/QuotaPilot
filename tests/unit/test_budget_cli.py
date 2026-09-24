@@ -8,6 +8,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
+from rich.text import Text
 from typer.testing import CliRunner
 
 from quotapilot.cli.app import app
@@ -53,11 +54,16 @@ def _seed_snapshot(*, timing: bool = True) -> tuple[str, str]:
 
 
 def test_budget_help() -> None:
-    result = runner.invoke(app, ["budget", "--help"])
+    result = runner.invoke(
+        app,
+        ["budget", "--help"],
+        env={"FORCE_COLOR": "1", "NO_COLOR": None},
+    )
+    output = Text.from_ansi(result.output).plain
 
     assert result.exit_code == 0
-    assert "--json" in result.output
-    assert "--reserve-fraction" in result.output
+    assert "--json" in output
+    assert "--reserve-fraction" in output
 
 
 def test_budget_json_is_report_model_and_excludes_account_identity(

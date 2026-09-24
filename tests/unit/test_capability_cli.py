@@ -7,6 +7,7 @@ import json
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
+from rich.text import Text
 from typer.testing import CliRunner
 
 from quotapilot.budget.engine import BudgetEngine
@@ -78,11 +79,16 @@ def _save_snapshot() -> SqliteSnapshotRepository:
 def test_models_help_and_no_snapshot_error(monkeypatch, tmp_path: Path) -> None:
     monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path))
 
-    help_result = runner.invoke(app, ["models", "--help"])
+    help_result = runner.invoke(
+        app,
+        ["models", "--help"],
+        env={"FORCE_COLOR": "1", "NO_COLOR": None},
+    )
+    help_output = Text.from_ansi(help_result.output).plain
     empty_result = runner.invoke(app, ["models", "--json"])
 
     assert help_result.exit_code == 0
-    assert "--as-of" in help_result.output
+    assert "--as-of" in help_output
     assert empty_result.exit_code == 1
     assert json.loads(empty_result.output) == {"error": "no_snapshot"}
 

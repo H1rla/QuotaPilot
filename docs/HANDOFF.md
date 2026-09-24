@@ -609,3 +609,22 @@ package publication. Do not infer publication approval from this gate.
   restricted `PATH`; the resulting real QuotaPilot window was then closed.
 - Changes remain under `[Unreleased]`. The existing v0.1.0 tag, changelog
   entry, and GitHub Release were not changed; no new release was published.
+
+## 2026-09-25 — GitHub Actions CI incident remediation
+
+- Investigated failed Actions run `36029815146` for `f361e3f`. The `test` job
+  failed in `Test (pytest)` for two independent runner-environment reasons:
+  Ubuntu lacked `libEGL.so.1` for four Qt offscreen tests, and GitHub's forced
+  ANSI coloring split Rich/Typer option tokens so four raw help-text substring
+  assertions failed. The same failures were already present in the preceding
+  run, so the desktop launcher change was not the direct cause.
+- CI now installs the minimal `libegl1` runtime instead of skipping GUI tests.
+  CLI help tests explicitly exercise forced-color output and compare the
+  ANSI-normalized visible text, preserving the user-facing option checks.
+- Focused reproduction passed: four forced-color CLI help tests and four Qt
+  offscreen/layout tests. Full local verification passed with **531 passed, 5
+  skipped** (authenticated provider integration only), Ruff clean, Pyright
+  zero errors/warnings, `git diff --check` clean, and successful wheel/sdist
+  build.
+- The fix remains post-v0.1.0 under `[Unreleased]`. Tag `v0.1.0` still resolves
+  to `7f21756`; no release, tag, or publication operation was performed.

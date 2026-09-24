@@ -13,6 +13,11 @@ Semantic Versioning while pre-1.0 interfaces may still evolve.
 - Documented optional `qp`, `qpg`, and `qps` Bash aliases for TUI, GUI, and
   one-shot status workflows.
 
+### Fixed
+
+- Made Linux CI install the Qt EGL runtime required by offscreen GUI tests and
+  made colored Rich/Typer help assertions independent of ANSI styling.
+
 ## [0.1.0] - 2026-09-25
 
 First alpha release. QuotaPilot is experimental and pre-1.0; routing profiles

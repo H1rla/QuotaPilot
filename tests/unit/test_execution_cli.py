@@ -7,6 +7,7 @@ import json
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
+from rich.text import Text
 from typer.testing import CliRunner
 
 from quotapilot.cli.app import app
@@ -47,13 +48,18 @@ def _seed_snapshot(*, age_seconds: int = 0) -> None:
 
 
 def test_execute_help_documents_dry_run_and_policy() -> None:
-    result = runner.invoke(app, ["execute", "--help"])
+    result = runner.invoke(
+        app,
+        ["execute", "--help"],
+        env={"FORCE_COLOR": "1", "NO_COLOR": None},
+    )
+    output = Text.from_ansi(result.output).plain
 
     assert result.exit_code == 0
-    assert "--dry-run" in result.output
-    assert "--json" in result.output
-    assert "--approval-mode" in result.output
-    assert "--timeout-seconds" in result.output
+    assert "--dry-run" in output
+    assert "--json" in output
+    assert "--approval-mode" in output
+    assert "--timeout-seconds" in output
 
 
 def test_json_dry_run_is_safe_and_does_not_include_task_or_account(

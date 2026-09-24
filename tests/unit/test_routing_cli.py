@@ -8,6 +8,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
+from rich.text import Text
 from typer.testing import CliRunner
 
 from quotapilot.cli.app import app
@@ -64,12 +65,17 @@ def _seed_snapshot(*, routable: bool = True) -> tuple[str, str]:
 
 
 def test_route_help() -> None:
-    result = runner.invoke(app, ["route", "--help"])
+    result = runner.invoke(
+        app,
+        ["route", "--help"],
+        env={"FORCE_COLOR": "1", "NO_COLOR": None},
+    )
+    output = Text.from_ansi(result.output).plain
 
     assert result.exit_code == 0
-    assert "--json" in result.output
-    assert "--failure-cost" in result.output
-    assert "--task-class" in result.output
+    assert "--json" in output
+    assert "--failure-cost" in output
+    assert "--task-class" in output
 
 
 def test_route_json_is_recommendation_and_excludes_account_identity(

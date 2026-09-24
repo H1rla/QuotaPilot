@@ -22,6 +22,11 @@ jobs:
       - name: Install dependencies
         run: uv sync --all-extras --dev
 
+      - name: Install Qt runtime dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes libegl1
+
       - name: Lint (ruff)
         run: uv run ruff check .
 
