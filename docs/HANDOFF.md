@@ -7,7 +7,7 @@
 
 - Date: 2026-09-25
 - Last agent: Codex
-- Current phase: **post-v0.1.0 daily forecast implementation**
+- Current phase: **post-v0.1.0 daily forecast complete**
 - Phase 2 provider boundary: **COMPLETE**
 - Phase 3/3.1 persistence boundary: **COMPLETE**
 - Phase 4/4.1 budget boundary: **COMPLETE**
@@ -25,7 +25,7 @@
 - Phase 9.2B Usage/History/Settings/Doctor: **COMPLETE**
 - Release readiness: **v0.1.0 publicly released**
 - Publishing/tag/GitHub release: **v0.1.0 published; no later release performed**
-- Daily quota forecast: **implemented in GUI and TUI; pending final CI verification**
+- Daily quota forecast: **implemented in GUI and TUI; CI green**
 
 ## Post-v0.1.0 daily forecast handoff
 
@@ -52,11 +52,10 @@
   `uv run ruff check .` → pass; `uv run pyright` → 0 errors;
   `git diff --check` → pass; `uv build` → pass; `pyside6-qmllint` → exit 0.
   Installed-wheel GUI offscreen smokes at 1100×720 and 900×600, TUI smoke,
-  and wheel resource check passed. A final rerun after the last localization
-  adjustment and GitHub Actions verification remains.
-- Next action: rerun final validation, inspect the full diff/status, commit the
-  feature, push `main` without tags, and watch the CI run to success. No known
-  external blocker. The published v0.1.0 tag/release must stay untouched.
+  and wheel resource check passed. Feature commit `64bc1d3` passed GitHub
+  Actions CI run `36041411729`, including its installed-wheel smoke.
+- Next action: no implementation work remains. A later feature can start from
+  the shared forecast service. The published v0.1.0 tag/release is untouched.
 
 The implemented Phase 7 contract is
 `docs/PHASE7_PRODUCTIZATION_CONTRACT.md`. The reusable pre-publication gate is
